@@ -12,11 +12,13 @@ const Applications = lazy(() => import('./pages/Applications'));
 const Multimodal = lazy(() => import('./pages/Multimodal'));
 const NetworkLab = lazy(() => import('./pages/NetworkLab'));
 const SecretVideo = lazy(() => import('./pages/SecretVideo'));
+const ApplicationStudio = lazy(() => import('./pages/ApplicationStudio'));
 
 const navigation = [
   { label: '隐写实验', items: [{ path: '/embed', label: '信息隐藏' }, { path: '/extract', label: '信息提取' }, { path: '/multimodal', label: '多模态实验' }] },
   { label: '分析评估', items: [{ path: '/analysis', label: '安全分析' }, { path: '/compare', label: '算法对比' }] },
   { label: '通信实验', items: [{ path: '/network-lab', label: '网络隐写' }, { path: '/secret-video', label: '视频通话' }] },
+  { label: '应用场景', items: [{ path: '/applications/medical', label: '医疗影像隐私保护' }, { path: '/applications/robustness', label: '鲁棒性传输测试' }, { path: '/applications/copyright', label: '数字版权与水印验证' }] },
 ];
 
 function LegacyApplications() {
@@ -72,7 +74,7 @@ function StudioLayout() {
     </Drawer>
     <div className="studio-main"><main id="main-content" className={`page-content${home ? ' page-content--immersive' : ''}`} tabIndex={-1}><div className={`route-view${home ? ' route-view--immersive' : ''}`} key={location.pathname}>
       <Suspense fallback={<Skeleton active paragraph={{rows:10}}/>}><Routes>
-        <Route path="/" element={<Applications/>}/><Route path="/embed" element={<Embed/>}/><Route path="/extract" element={<Extract/>}/><Route path="/multimodal" element={<Multimodal/>}/><Route path="/network-lab" element={<NetworkLab/>}/><Route path="/secret-video" element={<SecretVideo/>}/><Route path="/analysis" element={<Analysis/>}/><Route path="/compare" element={<Compare/>}/><Route path="/applications" element={<LegacyApplications/>}/><Route path="*" element={<Navigate to="/" replace/>}/>
+        <Route path="/" element={<Applications/>}/><Route path="/embed" element={<Embed/>}/><Route path="/extract" element={<Extract/>}/><Route path="/multimodal" element={<Multimodal/>}/><Route path="/network-lab" element={<NetworkLab/>}/><Route path="/secret-video" element={<SecretVideo/>}/><Route path="/analysis" element={<Analysis/>}/><Route path="/compare" element={<Compare/>}/><Route path="/applications/medical" element={<ApplicationStudio scene="medical"/>}/><Route path="/applications/robustness" element={<ApplicationStudio scene="robustness"/>}/><Route path="/applications/copyright" element={<ApplicationStudio scene="copyright"/>}/><Route path="/applications" element={<LegacyApplications/>}/><Route path="*" element={<Navigate to="/" replace/>}/>
       </Routes></Suspense>
     </div></main><footer className="app-footer">ISTG Studio</footer></div>
   </div>;

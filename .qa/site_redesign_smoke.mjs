@@ -70,10 +70,12 @@ try {
   }
   await page.goto(origin + '/applications#copyright-protection');
   await page.waitForURL(origin + '/#copyright-protection');
-  await visible(page.getByRole('heading', { name: /数字版权\s*保护/, exact: true }));
+  await visible(page.getByRole('heading', { name: /数字版权\s*与水印验证/, exact: true }));
   assert(await page.locator('#copyright-protection').evaluate(el => el.getBoundingClientRect().top >= document.querySelector('.site-header').getBoundingClientRect().bottom - 1));
   await page.goto(origin);
-  await page.getByRole('link', { name: '鲁棒性测试', exact: true }).click();
+  await page.locator('#robust-transmission').getByRole('link', { name: '进入场景', exact: true }).click();
+  await visible(page.getByRole('heading', { name: '鲁棒性传输测试', exact: true }));
+  await page.goto(origin + '/analysis?tab=performance&panel=robustness');
   await visible(page.getByRole('tab', { name: '鲁棒性测试', exact: true }));
   assert.equal(await page.getByRole('tab', { name: '鲁棒性测试', exact: true }).getAttribute('aria-selected'), 'true');
   await page.reload();

@@ -93,30 +93,34 @@ export default function Applications() {
       <div className="medical-scene__content" data-reveal>
         <h2 id="medical-heading">医疗影像<br />隐私保护</h2>
         <p className="app-scene__description">探索将敏感信息加密嵌入影像，并验证图像质量与信息恢复效果。</p>
-        <Link className="scene-button scene-button--light" to="/embed">图像隐写<ArrowRightOutlined aria-hidden="true" /></Link>
+        <Link className="scene-button scene-button--light" to="/applications/medical">进入场景<ArrowRightOutlined aria-hidden="true" /></Link>
       </div>
     </section>
     <section id="robust-transmission" className="app-scene app-scene--transmission" data-scene="transmission" data-testid="applications-scene" aria-labelledby="transmission-heading">
       <div className="app-scene__index" aria-hidden="true">02</div>
-      <div className="transmission-scene__heading" data-reveal><h2 id="transmission-heading">鲁棒性传输</h2><Link className="scene-button" to="/analysis?tab=performance&panel=robustness">鲁棒性测试<ArrowRightOutlined aria-hidden="true" /></Link></div>
+      <div className="transmission-scene__heading" data-reveal><h2 id="transmission-heading">鲁棒性传输</h2><Link className="scene-button" to="/applications/robustness">进入场景<ArrowRightOutlined aria-hidden="true" /></Link></div>
       <figure className="transmission-scene__comparison" data-reveal>
         <div className="transmission-scene__original"><ScenePhoto src={`${imageRoot}/robust-transmission.webp`} alt="山峰与湖面倒影的原始风景照片" /></div>
         <div className="transmission-scene__processed"><ScenePhoto src={`${imageRoot}/robust-transmission-compressed.webp`} alt="同一风景图像压缩后的视觉示意" /></div>
         <div className="transmission-scene__divider" aria-hidden="true"><span /></div>
         <figcaption><span>原始图像</span><span>压缩后 · 视觉示意</span></figcaption>
       </figure>
-      <p className="transmission-scene__description" data-reveal>比较压缩、噪声等处理对隐藏信息恢复的影响，探索不同算法的抗干扰能力。</p>
+      <p className="transmission-scene__description" data-reveal>观察图像经过处理后，隐藏信息是否仍能恢复。</p>
     </section>
     <section id="copyright-protection" className="app-scene app-scene--copyright" data-scene="copyright" data-testid="applications-scene" aria-labelledby="copyright-heading">
       <div className="app-scene__index" aria-hidden="true">03</div>
       <div className="copyright-scene__layout">
         <figure className="copyright-scene__artwork" data-reveal><div className="copyright-scene__frame"><ScenePhoto src={`${imageRoot}/copyright-protection.webp`} alt="Alfred East 的风景油画，呈现芦苇湖面与阳光下的山丘" height={1388} /></div></figure>
         <div className="copyright-scene__content" data-reveal>
-          <h2 id="copyright-heading">数字版权<br />保护</h2>
-          <p className="app-scene__description">探索将作者标识与版权声明融入图像，为作品来源识别提供支持。</p>
-          <Link className="scene-button scene-button--light" to="/embed">版权标识实验<ArrowRightOutlined aria-hidden="true" /></Link>
+          <h2 id="copyright-heading">数字版权<br />与水印验证</h2>
+          <p className="app-scene__description">将作品信息嵌入图像，并验证标识能否完整提取。</p>
+          <Link className="scene-button scene-button--light" to="/applications/copyright">进入场景<ArrowRightOutlined aria-hidden="true" /></Link>
         </div>
       </div>
+    </section>
+    <section className="applications-outro" aria-labelledby="applications-outro-heading">
+      <div><h2 id="applications-outro-heading">探索你的图像隐写场景</h2><p>从一个具体任务开始，选择适合的实验方式。</p></div>
+      <div className="applications-outro__actions"><a className="scene-button scene-button--light" href="#medical-imaging">选择应用场景<ArrowRightOutlined aria-hidden="true" /></a><Link className="scene-button scene-button--primary" to="/embed">开始实验<ArrowRightOutlined aria-hidden="true" /></Link></div>
     </section>
   </div>;
 }

@@ -21,6 +21,7 @@ export interface CompletedImageExperiment {
   dataType: 'text' | 'image';
   imageMode: 'file' | 'bitplanes';
   secretBits: number;
+  sourceScene?: 'medical' | 'copyright';
 }
 
 const publicParameters = ['channels', 'bit_depth', 'strength', 'edge_threshold'];
@@ -32,7 +33,7 @@ function imageMetadata(file: UploadedImage): UploadedImage {
 }
 interface ExperimentStore {
   get: (id?: string) => CompletedImageExperiment | undefined;
-  save: (result: AnyResult, taskId: string | undefined, configuration: Pick<CompletedImageExperiment, 'dataType' | 'imageMode' | 'secretBits'>) => CompletedImageExperiment;
+  save: (result: AnyResult, taskId: string | undefined, configuration: Pick<CompletedImageExperiment, 'dataType' | 'imageMode' | 'secretBits'> & Partial<Pick<CompletedImageExperiment, 'sourceScene'>>) => CompletedImageExperiment;
   invalidate: (id?: string) => void;
 }
 const Experiments = createContext<ExperimentStore | null>(null);
@@ -50,6 +51,7 @@ export function ExperimentProvider({ children }: { children: ReactNode }) {
         packet_bytes: Number(result.packet_bytes), quality, timings: { embed_seconds: Number(result.timings?.embed_seconds ?? 0) },
         recovery: { exact_match: result.recovery?.exact_match === true },
         dataType: configuration.dataType, imageMode: configuration.imageMode, secretBits: configuration.secretBits,
+        sourceScene: configuration.sourceScene === 'medical' || configuration.sourceScene === 'copyright' ? configuration.sourceScene : undefined,
       };
       records.current.set(snapshot.id, snapshot);
       return snapshot;
@@ -61,6 +63,9 @@ export function useExperiments() {
   const store = useContext(Experiments);
   if (!store) throw new Error('ExperimentProvider is required');
   return store;
+}
+export function experimentPath(experiment: CompletedImageExperiment) {
+  return experiment.sourceScene ? `/applications/${experiment.sourceScene}` : '/embed';
 }
 export function useExperimentHandoff() {
   const location = useLocation();

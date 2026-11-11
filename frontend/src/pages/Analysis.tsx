@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
-import { HandoffNotice, useExperimentHandoff } from '../hooks/useExperiments';
+import { experimentPath, HandoffNotice, useExperimentHandoff } from '../hooks/useExperiments';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Alert, Button, Card, Checkbox, Descriptions, Empty, Image, Input, InputNumber,
-  Progress, Radio, Select, Space, Table, Tabs, Tag, Tooltip, Typography, message,
+  Progress, Radio, Select, Space, Table, Tabs, Tag, Typography, message,
 } from 'antd';
 import {
   AppstoreOutlined, BarChartOutlined, DeleteOutlined, ExperimentOutlined,
@@ -15,6 +15,7 @@ import { AlgorithmSelector } from '../components/AlgorithmSelector';
 import { ImageUploader } from '../components/ImageUploader';
 import { ParameterPanel } from '../components/ParameterPanel';
 import { ResultCharts } from '../components/ResultCharts';
+import { RobustnessPanel } from '../components/analysis/RobustnessPanel';
 import { JobStatus } from '../components/JobStatus';
 import { useAlgorithms } from '../hooks/useAlgorithms';
 import { useJob } from '../hooks/useJob';
@@ -38,7 +39,6 @@ interface StatisticsResult {
 interface Recovery { status:string;exact_match:boolean;ber:number|null;overlap_ber:number|null;original_length:number;extracted_length:number;original_sha256:string;extracted_sha256:string;bit_errors:number }
 interface Timing { mean_seconds:number|null;std_seconds:number|null;throughput_bytes_per_second:number|null }
 interface BenchmarkResult { status:string;successful_repeats:number;repeats:number;payload_bytes:number;embed:Timing;extract:Timing;runs:{repeat:number;status:string;embed_seconds:number|null;extract_seconds:number|null;recovery?:Recovery;error?:string}[] }
-interface RobustnessRow { attack:{type:string;quality?:number;sigma?:number;ratio?:number;scale?:number};status:string;extraction_success:boolean;exact_match:boolean;ber:number|null;file?:Artifact;error?:string }
 interface EvaluationRow {label:number;score:number|null;prediction:number|null;status:string;path?:string;name?:string;file?:Artifact;error?:string}
 interface EvaluationResult {status:string;TP:number;FP:number;TN:number;FN:number;TPR:number|null;FPR:number|null;Precision:number|null;Recall:number|null;Accuracy:number|null;ROC_AUC:number|null;scored_samples:number;total_samples:number;undetermined_samples:number;error_samples:number;results:EvaluationRow[]}
 
@@ -143,7 +143,7 @@ function QualityPanel() {
   return <div className="analysis-stack">
     <HandoffNotice visible={handoff.expired} onClose={handoff.dismiss} />
     <div className="analysis-two"><ImageUploader label="原始载体图片" value={original} onChange={changeOriginal} role="reference" /><ImageUploader label="隐写结果图片" value={stego} onChange={changeStego} role="stego" /></div>
-    <div className="result-actions"><Button type="primary" disabled={!original || !stego} loading={job.loading} onClick={() => { void job.run('/analysis/quality', { original_id: original?.id, stego_id: stego?.id }); }}>计算图像质量</Button>{handoff.experiment && <Button onClick={() => navigate('/embed', { state: { experimentId: handoff.experiment!.id } })}>返回实验结果</Button>}</div>
+    <div className="result-actions"><Button type="primary" disabled={!original || !stego} loading={job.loading} onClick={() => { void job.run('/analysis/quality', { original_id: original?.id, stego_id: stego?.id }); }}>计算图像质量</Button>{handoff.experiment && <Button onClick={() => navigate(experimentPath(handoff.experiment!), { state: { experimentId: handoff.experiment!.id } })}>返回实验结果</Button>}</div>
     <JobStatus task={job.task} loading={job.loading} error={job.error} />
     {quality && <><Measures items={[{ label: 'PSNR', value: `${metric(quality.psnr)} dB`, hint: '峰值信噪比' }, { label: 'SSIM', value: metric(quality.ssim, 6), hint: '结构相似性' }, { label: 'MSE', value: metric(quality.mse, 6), hint: '均方误差' }]} /><Exports taskId={job.task?.id} /></>}
     <p className="analysis-note">请选择两张尺寸相同的图片。质量指标用于比较图像变化，不代表隐写安全性。</p>
@@ -163,18 +163,6 @@ function RecoveryPanel() {
 function BenchmarkPanel({algorithms}:{algorithms:Algorithm[]}) {
   const [image,setImage]=useState<UploadedImage>();const [algorithm,setAlgorithm]=useState('sequential_lsb');const [params,setParams]=useState<AlgorithmParams>({});const [text,setText]=useState('');const [repeats,setRepeats]=useState(3);const job=useJob();const result=job.result as BenchmarkResult|undefined;
   return <div className="analysis-stack"><div className="analysis-two"><ImageUploader label="基准测试载体图片" value={image} onChange={setImage} role="cover"/><div><MethodFields algorithms={algorithms.filter(a=>a.mode!=='bitplanes')} algorithm={algorithm} onAlgorithm={setAlgorithm} params={params} onParams={setParams}/><label className="analysis-label">测试文本</label><Input.TextArea value={text} onChange={event=>setText(event.target.value)} rows={3} placeholder="输入用于测试的文本"/><div className="analysis-spacer"><Space><span>重复次数</span><InputNumber min={1} max={5} value={repeats} onChange={value=>setRepeats(value??3)}/></Space></div></div></div><Button type="primary" disabled={!image||!text.trim()} loading={job.loading} icon={<PlayCircleOutlined/>} onClick={()=>{void job.run('/analysis/benchmark',{image_id:image?.id,payload_text:text,algorithm,params,repeats});}}>开始基准测试</Button><JobStatus task={job.task} loading={job.loading} error={job.error}/>{result&&<><Measures items={[{label:'平均嵌入耗时',value:milliseconds(result.embed?.mean_seconds),hint:`标准差 ${milliseconds(result.embed?.std_seconds)}`},{label:'平均提取耗时',value:milliseconds(result.extract?.mean_seconds),hint:`标准差 ${milliseconds(result.extract?.std_seconds)}`},{label:'嵌入吞吐量',value:`${bytes(result.embed?.throughput_bytes_per_second)}/s`},{label:'完整恢复次数',value:`${result.successful_repeats} / ${result.repeats}`} ]}/><Table size="small" rowKey="repeat" dataSource={result.runs} pagination={false} columns={[{title:'轮次',dataIndex:'repeat'},{title:'嵌入',dataIndex:'embed_seconds',render:milliseconds},{title:'提取',dataIndex:'extract_seconds',render:milliseconds},{title:'恢复状态',dataIndex:'status',render:(status:string)=><StatusTag status={status}/>},{title:'BER',render:(_,row)=>percent(row.recovery?.ber)},{title:'说明',dataIndex:'error',ellipsis:true}]}/><Exports taskId={job.task?.id}/></>}</div>;
-}
-
-const attackNames:Record<string,string>={jpeg:'JPEG 重压缩',gaussian_noise:'高斯噪声',crop:'中心裁剪',resize:'图像缩放'};
-function RobustnessPanel({algorithms}:{algorithms:Algorithm[]}) {
-  const [image,setImage]=useState<UploadedImage>();const [algorithm,setAlgorithm]=useState('sequential_lsb');const [params,setParams]=useState<AlgorithmParams>({});const [attacks,setAttacks]=useState(['jpeg','gaussian_noise','crop','resize']);const [quality,setQuality]=useState(85);const [sigma,setSigma]=useState(2);const [ratio,setRatio]=useState(0.9);const [scale,setScale]=useState(0.75);const job=useJob();const rows=(job.result?.results??[]) as RobustnessRow[];
-  const run=()=>{const config=attacks.map(type=>type==='jpeg'?{type,quality}:type==='gaussian_noise'?{type,sigma,seed:0}:type==='crop'?{type,ratio}:{type,scale});void job.run('/analysis/robustness',{image_id:image?.id,algorithm,params,attacks:config});};
-  const option:EChartsOption={tooltip:{trigger:'axis'},grid:{left:55,right:20,top:20,bottom:50},xAxis:{type:'category',data:rows.map(row=>attackNames[row.attack.type]??row.attack.type)},yAxis:{type:'value',min:0,max:1,name:'BER',axisLabel:{formatter:(value:number)=>`${value*100}%`}},series:[{name:'BER',type:'bar',data:rows.map(row=>row.ber),itemStyle:{color:'#189d91',borderRadius:[5,5,0,0]},barMaxWidth:60}]};
-  return <div className="analysis-stack"><div className="analysis-two"><ImageUploader label="上传隐写图片" value={image} onChange={setImage} role="stego"/><div><MethodFields algorithms={algorithms} algorithm={algorithm} onAlgorithm={setAlgorithm} params={params} onParams={setParams}/></div></div>
-    <div><label className="analysis-label">扰动类型</label><Checkbox.Group value={attacks} options={Object.entries(attackNames).map(([value,label])=>({value,label}))} onChange={values=>setAttacks(values.map(String))}/><div className="analysis-attack-settings"><label>JPEG 质量<InputNumber min={1} max={100} value={quality} onChange={value=>setQuality(value??85)}/></label><label>噪声 σ<InputNumber min={0} max={255} step={0.5} value={sigma} onChange={value=>setSigma(value??2)}/></label><label>裁剪保留宽高比例<InputNumber min={0.05} max={1} step={0.05} value={ratio} onChange={value=>setRatio(value??0.9)}/></label><label>缩放比例<InputNumber min={0.05} max={4} step={0.05} value={scale} onChange={value=>setScale(value??0.75)}/></label></div></div>
-    <Button type="primary" disabled={!image||!attacks.length} loading={job.loading} icon={<ExperimentOutlined/>} onClick={run}>开始鲁棒性实验</Button><JobStatus task={job.task} loading={job.loading} error={job.error}/>
-    {job.result&&<><ResultCharts option={option} height={270}/><Table size="small" rowKey={(_,index)=>String(index)} dataSource={rows} pagination={false} scroll={{x:800}} columns={[{title:'扰动',render:(_,row)=><Tooltip title={JSON.stringify(row.attack)}>{attackNames[row.attack.type]??row.attack.type}</Tooltip>},{title:'结果',dataIndex:'status',render:(status:string)=><StatusTag status={status}/>},{title:'完整恢复',dataIndex:'exact_match',render:(value:boolean)=>value?'是':'否'},{title:'BER',dataIndex:'ber',render:percent},{title:'扰动图',render:(_,row)=>row.file?<Space><Button size="small" href={row.file.download_url??row.file.url}>下载</Button>{row.file.url&&<Image width={42} height={32} style={{objectFit:'cover'}} src={row.file.url} alt="扰动结果图片"/>}</Space>:'—'},{title:'说明',dataIndex:'error',render:(value:string)=><span className="analysis-table-error">{value}</span>}]}/><Exports taskId={job.task?.id}/></>}
-  </div>;
 }
 
 function DatasetPicker({label,files,onChange,role}:{label:string;files:UploadedImage[];onChange:(files:UploadedImage[])=>void;role:string}) {

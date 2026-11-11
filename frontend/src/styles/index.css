@@ -549,10 +549,10 @@ html { scroll-padding-top: calc(var(--header-height) + 20px); }
 .ant-btn { transition:background-color 180ms,border-color 180ms,color 180ms; }
 :focus-visible { outline:2px solid #0d8f87; outline-offset:4px; }
 @keyframes surface-enter { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
-@media(max-width:1200px) {
-  .site-header-inner { gap:28px; padding-inline:28px; }
-  .desktop-navigation { gap:20px; }
-  .site-header-actions { gap:20px; }
+@media(max-width:1279px) {
+  .site-header-inner { gap:24px; padding-inline:24px; }
+  .desktop-navigation { gap:16px; }
+  .site-header-actions { gap:16px; }
   .page-content { padding:30px 28px 40px; }
   .page-content--immersive { padding:0; }
   .workspace-grid { gap:20px; }
