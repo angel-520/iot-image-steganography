@@ -1,0 +1,13 @@
+"""Shared, explicit limits for the larger multimodal workflow (legacy APIs retain theirs)."""
+MIB = 1024 * 1024
+SECRET_BYTES = 64 * MIB
+PACKET_BYTES = 65 * MIB
+VIDEO_UPLOAD = 512 * MIB
+AUDIO_UPLOAD = 256 * MIB
+RESULT_BYTES = 1024 * MIB
+TEXT_OUTPUT = 64 * MIB
+VIDEO_FRAMES = 100_000
+VIDEO_SECONDS = 1800
+VIDEO_PIXELS = 3840 * 2160
+VIDEO_FPS = 240
+VIDEO_WORK_BYTES = 64 * 1024 * MIB

@@ -1,0 +1,28 @@
+# Local two-machine configuration and received private messages.
+network-peers.json
+received-messages/
+.secret-video-tls/
+
+# Dependencies, runtime caches and generated debug artifacts.
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.log
+.coverage
+.coverage.*
+htmlcov/
+test-results/
+playwright-report/
+frontend/node_modules/
+.studio-data/
+.qa/*.png
+.qa/*.pcap
+.qa/*.istg
+.qa/sv-*-bundle.mjs
+.qa/browser-peers.json
+.qa/peer-inbox/
+.qa/stego.wav
+.qa/secret-video-source-*.wav
+.qa/secret-video-speech.wav

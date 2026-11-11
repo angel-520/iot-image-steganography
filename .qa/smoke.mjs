@@ -1,0 +1,37 @@
+import { chromium } from '../frontend/node_modules/playwright/index.mjs';
+import path from 'node:path';
+import fs from 'node:fs/promises';
+const browser = await chromium.launch({ channel: 'msedge', headless: true });
+try {
+  const page = await browser.newPage({ viewport: { width: 1440, height: 1080 } });
+  const errors=[];
+  page.on('pageerror', e=>errors.push(e.message));
+  let embedded;
+  page.on('response',async response=>{if(response.url().includes('/api/tasks/')){try{const data=await response.json();if(data.status==='completed' && data.result?.carrier) embedded=data.result;}catch{}}});
+  await page.goto('http://127.0.0.1:8017/multimodal');
+  await page.getByRole('heading',{name:'让信息，跨越载体'}).waitFor();
+  await page.locator('input[type=file]').first().setInputFiles(path.resolve('.qa/cover.wav'));
+  await page.getByText('cover.wav',{exact:true}).waitFor();
+  await page.getByRole('textbox',{name:'秘密文字',exact:true}).fill('浏览器完整往返验证 🔐');
+  await page.getByLabel('加密或提取密码',{exact:true}).fill('browser-test');
+  await page.getByLabel('确认密码',{exact:true}).fill('browser-test');
+  await page.getByRole('button',{name:'检查容量',exact:true}).click();
+  await page.getByText(/封装 .*可用/).waitFor();
+  await page.getByRole('button',{name:/开始嵌入/}).click();
+  await page.getByText('提取验证通过',{exact:true}).waitFor();
+  await page.evaluate(()=>window.scrollTo(0,0));
+  await page.waitForTimeout(350);
+  await page.screenshot({path:path.resolve('.qa/audio-desktop.png'),fullPage:true});
+  if(!embedded)throw Error('No completed task result');
+  const wav=await page.request.get(new URL(embedded.stego.url, page.url()).href);
+  await fs.writeFile(path.resolve('.qa/stego.wav'),await wav.body());
+  await page.getByText('提取',{exact:true}).click();
+  await page.locator('input[type=file]').first().setInputFiles(path.resolve('.qa/stego.wav'));
+  await page.getByText('stego.wav',{exact:true}).waitFor();
+  await page.getByLabel('加密或提取密码',{exact:true}).fill('browser-test');
+  await page.getByRole('button',{name:/开始提取/}).click();
+  await page.getByText('认证解密通过',{exact:true}).waitFor();
+  await page.getByText('浏览器完整往返验证 🔐',{exact:true}).waitFor();
+  await page.screenshot({path:path.resolve('.qa/recovered-desktop.png'),fullPage:true});
+  console.log(JSON.stringify({audioBrowserRoundtrip:true,pageErrors:errors}));
+} finally { await browser.close(); }

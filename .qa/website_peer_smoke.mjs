@@ -1,0 +1,53 @@
+import { chromium } from '../frontend/node_modules/playwright/index.mjs';
+import dgram from 'node:dgram';
+const socket=dgram.createSocket('udp4');
+await new Promise(resolve=>socket.bind(0,'127.0.0.1',resolve));
+const port=socket.address().port;
+socket.close();
+const browser=await chromium.launch({channel:'msedge',headless:true});
+try {
+  const sender=await browser.newPage({viewport:{width:1440,height:1080}});
+  const receiver=await browser.newPage({viewport:{width:1440,height:1080}});
+  const errors=[];
+  sender.on('pageerror',error=>errors.push(error.message));
+  receiver.on('pageerror',error=>errors.push(error.message));
+  await Promise.all([sender.goto('http://127.0.0.1:8017/network-lab'),receiver.goto('http://127.0.0.1:8018/network-lab')]);
+  await receiver.getByRole('tab',{name:'双机 / 公网',exact:true}).click();
+  await receiver.getByRole('tab',{name:'接收消息',exact:true}).click();
+  await receiver.getByRole('textbox',{name:'允许的发送方 IP',exact:true}).fill('127.0.0.1');
+  await receiver.getByRole('spinbutton',{name:'本机接收端口',exact:true}).fill(String(port));
+  await receiver.getByRole('button',{name:'生成共享口令',exact:true}).click();
+  const sharedKey=await receiver.getByLabel('接收共享口令',{exact:true}).inputValue();
+  if(sharedKey.length!==64)throw Error('Generated key is not 256 bits');
+  await receiver.getByRole('button',{name:'开始接收',exact:true}).click();
+  await receiver.getByText('正在接收',{exact:true}).waitFor();
+  await sender.getByRole('tab',{name:'双机 / 公网',exact:true}).click();
+  await sender.getByRole('textbox',{name:'接收方 IP 地址',exact:true}).fill('127.0.0.1');
+  await sender.getByRole('spinbutton',{name:'接收方端口',exact:true}).fill(String(port));
+  await sender.getByLabel('发送共享口令',{exact:true}).fill(sharedKey);
+  await sender.getByRole('button',{name:'保存接收方设置',exact:true}).click();
+  await sender.getByText(`127.0.0.1:${port}`,{exact:true}).first().waitFor();
+  const text='两个网站直接收发，中文🔐完整恢复';
+  await sender.getByRole('textbox',{name:'远程秘密文字',exact:true}).fill(text);
+  await sender.getByRole('button',{name:/发送给对方/}).click();
+  await sender.getByText('对方已接收',{exact:true}).waitFor();
+  await receiver.getByText(text,{exact:true}).waitFor();
+  const link=receiver.getByRole('link',{name:/下载消息 TXT/});
+  const response=await receiver.request.get(new URL(await link.getAttribute('href'),receiver.url()).href);
+  if((await response.body()).toString('utf8')!==text)throw Error('Downloaded text differs');
+  await receiver.evaluate(()=>window.scrollTo(0,0));
+  await receiver.waitForTimeout(350);
+  await receiver.screenshot({path:'.qa/web-receiver-desktop.png',fullPage:true});
+  await sender.evaluate(()=>window.scrollTo(0,0));
+  await sender.screenshot({path:'.qa/web-sender-desktop.png',fullPage:true});
+  await receiver.getByRole('button',{name:'停止接收',exact:true}).click();
+  await receiver.getByText('已停止',{exact:true}).waitFor();
+  await receiver.setViewportSize({width:390,height:844});
+  await receiver.screenshot({path:'.qa/web-receiver-mobile.png',fullPage:true});
+  if(await receiver.evaluate(()=>document.documentElement.scrollWidth>innerWidth+2))throw Error('Mobile horizontal overflow');
+  if(errors.length)throw Error(errors.join('; '));
+  console.log(JSON.stringify({twoIndependentWebsites:true,browserConfiguredPeers:true,browserStartStop:true,receiverInbox:true,downloadExact:true,mobileNoOverflow:true,pageErrors:errors}));
+} finally {
+  // The browser is closed regardless of assertions; listener lifetime is independently bounded.
+  await browser.close();
+}
