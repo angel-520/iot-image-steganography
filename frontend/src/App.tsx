@@ -1,9 +1,9 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
-import { BrowserRouter, Link, NavLink, Route, Routes, useLocation } from 'react-router-dom';
-import { Button, Skeleton, Tooltip } from 'antd';
-import { AppstoreOutlined, ArrowRightOutlined, BarChartOutlined, ExperimentOutlined, LockOutlined, MenuFoldOutlined, MenuUnfoldOutlined, PictureOutlined, SafetyCertificateOutlined, UnlockOutlined } from '@ant-design/icons';
+import { BrowserRouter, Link, Navigate, NavLink, Route, Routes, useLocation } from 'react-router-dom';
+import { Button, Drawer, Dropdown, Skeleton } from 'antd';
+import { DownOutlined, MenuOutlined } from '@ant-design/icons';
+import { ExperimentProvider } from './hooks/useExperiments';
 import { api } from './services/api';
-import Home from './pages/Home';
 import Embed from './pages/Embed';
 import Extract from './pages/Extract';
 const Analysis = lazy(() => import('./pages/Analysis'));
@@ -14,35 +14,67 @@ const NetworkLab = lazy(() => import('./pages/NetworkLab'));
 const SecretVideo = lazy(() => import('./pages/SecretVideo'));
 
 const navigation = [
-  {path:'/',label:'工作台',icon:<AppstoreOutlined/>,caption:'概览与快速开始'},
-  {path:'/embed',label:'信息隐藏',icon:<LockOutlined/>,caption:'文本与图片嵌入'},
-  {path:'/extract',label:'信息提取',icon:<UnlockOutlined/>,caption:'检测与认证解密'},
-  {path:'/multimodal',label:'多模态实验',icon:<ExperimentOutlined/>,caption:'音视频与跨模态'},
-  {path:'/network-lab',label:'网络隐写实验室',icon:<SafetyCertificateOutlined/>,caption:'隐蔽信道与流量分析'},
-  {path:'/secret-video',label:'SecretVideo 通话',icon:<ExperimentOutlined/>,caption:'多人实时视频隐写'},
-  {path:'/analysis',label:'安全性分析',icon:<SafetyCertificateOutlined/>,caption:'图像取证与实验'},
-  {path:'/compare',label:'算法对比',icon:<BarChartOutlined/>,caption:'多算法同条件对比'},
-  {path:'/applications',label:'应用场景',icon:<PictureOutlined/>,caption:'信息隐藏的应用方向'},
+  { label: '隐写实验', items: [{ path: '/embed', label: '信息隐藏' }, { path: '/extract', label: '信息提取' }, { path: '/multimodal', label: '多模态实验' }] },
+  { label: '分析评估', items: [{ path: '/analysis', label: '安全分析' }, { path: '/compare', label: '算法对比' }] },
+  { label: '通信实验', items: [{ path: '/network-lab', label: '网络隐写' }, { path: '/secret-video', label: '视频通话' }] },
 ];
+
+function LegacyApplications() {
+  const { search, hash } = useLocation();
+  return <Navigate to={`/${search}${hash}`} replace />;
+}
 
 function StudioLayout() {
   const location = useLocation();
-  const [collapsed,setCollapsed] = useState(false);
-  const [health,setHealth] = useState<'loading'|'ok'|'offline'>('loading');
-  useEffect(() => { let active=true; const check=()=>{void api.get('/health').then(()=>{if(active)setHealth('ok');}).catch(()=>{if(active)setHealth('offline');});}; check();const id=window.setInterval(check,30_000);return()=>{active=false;window.clearInterval(id);}; },[]);
-  const current = navigation.find(item=>item.path===location.pathname) ?? navigation[0];
-  const immersive = location.pathname === '/applications';
-  return <div className={`studio-shell ${collapsed?'nav-collapsed':''}`}>
-    <aside className="sidebar">
-      <Link to="/" className="brand" aria-label="ISTG Studio 首页"><div className="brand-mark"><span/><span/><span/><span/></div><div className="brand-copy"><strong>ISTG <em>Studio</em></strong><span>多模态隐写安全平台</span></div></Link>
-      <div className="nav-caption">实验工作空间</div>
-      <nav aria-label="主导航">{navigation.map(item=><NavLink key={item.path} to={item.path} aria-label={item.label} end={item.path==='/'} className={({isActive})=>`navigation-item ${isActive?'active':''}`}><span className="nav-icon">{item.icon}</span><span className="nav-text"><strong>{item.label}</strong><small>{item.caption}</small></span><span className="nav-arrow"><ArrowRightOutlined/></span></NavLink>)}</nav>
-      <div className="sidebar-bottom"><div className="sidebar-footnote">多模态信息隐藏与分析<span>ISTG Studio · 2.0</span></div></div>
-    </aside>
-    <div className="studio-main"><header className="app-header"><div className="header-left"><Tooltip title={collapsed?'展开导航':'折叠导航'}><Button type="text" aria-label={collapsed?'展开导航':'折叠导航'} onClick={()=>setCollapsed(!collapsed)} icon={collapsed?<MenuUnfoldOutlined/>:<MenuFoldOutlined/>}/></Tooltip><span className="header-divider"/><div className="breadcrumb">工作空间 <span>/</span> <strong>{current.label}</strong></div></div><div className="header-status" role="status"><span className={`connection-dot ${health}`}/><span>{health==='ok'?'已连接':health==='offline'?'连接中断':'正在连接'}</span></div></header>
-      <main className={`page-content${immersive?' page-content--immersive':''}`}><div className={`route-view${immersive?' route-view--immersive':''}`} key={location.pathname}><Suspense fallback={<Skeleton active paragraph={{rows:10}}/>}><Routes><Route path="/" element={<Home/>}/><Route path="/embed" element={<Embed/>}/><Route path="/extract" element={<Extract/>}/><Route path="/multimodal" element={<Multimodal/>}/><Route path="/network-lab" element={<NetworkLab/>}/><Route path="/secret-video" element={<SecretVideo/>}/><Route path="/analysis" element={<Analysis/>}/><Route path="/compare" element={<Compare/>}/><Route path="/applications" element={<Applications/>}/><Route path="*" element={<Home/>}/></Routes></Suspense></div></main>
-      <footer className="app-footer"><span>ISTG Studio</span><span><ExperimentOutlined/> 多模态信息隐写与安全攻防</span></footer>
-    </div>
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [openGroup, setOpenGroup] = useState<string>();
+  const [health, setHealth] = useState<'loading' | 'ok' | 'offline'>('loading');
+  const home = location.pathname === '/';
+  const returnHome = () => { setDrawerOpen(false); if (home) window.scrollTo({ top: 0 }); };
+  useEffect(() => {
+    let active = true;
+    const check = () => { void api.get('/health').then(() => { if (active) setHealth('ok'); }).catch(() => { if (active) setHealth('offline'); }); };
+    check(); const id = window.setInterval(check, 30_000);
+    return () => { active = false; window.clearInterval(id); };
+  }, []);
+  useEffect(() => {
+    setDrawerOpen(false); setOpenGroup(undefined);
+    if (!location.hash) window.scrollTo({ top: 0 });
+  }, [location.pathname, location.hash]);
+  useEffect(() => {
+    const desktop = window.matchMedia('(min-width: 1024px)');
+    const close = () => { setDrawerOpen(false); setOpenGroup(undefined); };
+    desktop.addEventListener('change', close);
+    return () => desktop.removeEventListener('change', close);
+  }, []);
+  return <div className="studio-shell">
+    <a className="skip-link" href="#main-content">跳至主要内容</a>
+    <header className="site-header"><div className="site-header-inner">
+      <Link to="/" className="brand" aria-label="ISTG Studio 首页" onClick={returnHome}><span className="brand-mark" aria-hidden="true"><span/><span/><span/><span/></span><span className="brand-name">ISTG <span>Studio</span></span></Link>
+      <nav className="desktop-navigation" aria-label="主导航">
+        <NavLink to="/" end className="top-nav-link" onClick={returnHome}>首页</NavLink>
+        {navigation.map(group => <Dropdown key={group.label} autoFocus trigger={['hover', 'click']} open={openGroup === group.label} onOpenChange={open => setOpenGroup(current => open ? group.label : current === group.label ? undefined : current)}
+          menu={{ selectedKeys: [location.pathname], items: group.items.map(item => ({ key: item.path, label: <Link to={item.path} onClick={() => setOpenGroup(undefined)}>{item.label}</Link> })), onClick: () => setOpenGroup(undefined) }}>
+          <button type="button" aria-label={group.label} className={`top-nav-link${group.items.some(item => item.path === location.pathname) ? ' active' : ''}`} aria-haspopup="menu" aria-expanded={openGroup === group.label}
+            onKeyDown={event => { if (event.key === 'ArrowDown') { event.preventDefault(); setOpenGroup(group.label); } if (event.key === 'Escape') setOpenGroup(undefined); }}>{group.label}<DownOutlined/></button>
+        </Dropdown>)}
+      </nav>
+      <div className="site-header-actions">
+        {!home && <div className="header-status" role="status"><span className={`connection-dot ${health}`}/><span>{health === 'ok' ? '已连接' : health === 'offline' ? '连接中断' : '正在连接'}</span></div>}
+        <Link to="/embed" className="header-start">开始实验</Link>
+        <Button type="text" className="mobile-menu-button" aria-label="打开导航" aria-expanded={drawerOpen} icon={<MenuOutlined/>} onClick={() => setDrawerOpen(true)}/>
+      </div>
+    </div></header>
+    <Drawer title="导航" placement="right" width="min(360px, 100vw)" open={drawerOpen} onClose={() => setDrawerOpen(false)}>
+      <nav className="mobile-navigation" aria-label="移动导航"><NavLink to="/" end onClick={returnHome}>首页</NavLink>
+        {navigation.map(group => <section key={group.label}><h2>{group.label}</h2>{group.items.map(item => <NavLink key={item.path} to={item.path} onClick={() => setDrawerOpen(false)}>{item.label}</NavLink>)}</section>)}
+      </nav>
+    </Drawer>
+    <div className="studio-main"><main id="main-content" className={`page-content${home ? ' page-content--immersive' : ''}`} tabIndex={-1}><div className={`route-view${home ? ' route-view--immersive' : ''}`} key={location.pathname}>
+      <Suspense fallback={<Skeleton active paragraph={{rows:10}}/>}><Routes>
+        <Route path="/" element={<Applications/>}/><Route path="/embed" element={<Embed/>}/><Route path="/extract" element={<Extract/>}/><Route path="/multimodal" element={<Multimodal/>}/><Route path="/network-lab" element={<NetworkLab/>}/><Route path="/secret-video" element={<SecretVideo/>}/><Route path="/analysis" element={<Analysis/>}/><Route path="/compare" element={<Compare/>}/><Route path="/applications" element={<LegacyApplications/>}/><Route path="*" element={<Navigate to="/" replace/>}/>
+      </Routes></Suspense>
+    </div></main><footer className="app-footer">ISTG Studio</footer></div>
   </div>;
 }
-export default function App(){return <BrowserRouter><StudioLayout/></BrowserRouter>;}
+export default function App() { return <BrowserRouter><ExperimentProvider><StudioLayout/></ExperimentProvider></BrowserRouter>; }

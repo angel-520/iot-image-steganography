@@ -4,8 +4,8 @@ import { CloudUploadOutlined, DeleteOutlined, FileImageOutlined } from '@ant-des
 import { errorMessage, formatBytes, uploadImage } from '../services/api';
 import type { UploadedImage } from '../types';
 
-interface Props { label: string; value?: UploadedImage; onChange: (value: UploadedImage | undefined) => void; onLoadingChange?: (loading: boolean) => void; role?: string; disabled?: boolean; compact?: boolean }
-export function ImageUploader({ label, value, onChange, onLoadingChange, role = 'cover', disabled, compact }: Props) {
+interface Props { label: string; value?: UploadedImage; onChange: (value: UploadedImage | undefined) => void; onLoadingChange?: (loading: boolean) => void; role?: string; disabled?: boolean; compact?: boolean; hideLabel?: boolean }
+export function ImageUploader({ label, value, onChange, onLoadingChange, role = 'cover', disabled, compact, hideLabel }: Props) {
   const [loading, setLoading] = useState(false);
   const uploading = useRef(false);
   const beforeUpload = async (file: File) => {
@@ -17,8 +17,8 @@ export function ImageUploader({ label, value, onChange, onLoadingChange, role = 
     finally { uploading.current = false; setLoading(false); onLoadingChange?.(false); }
     return Upload.LIST_IGNORE;
   };
-  return <div className={`image-uploader ${compact ? 'compact' : ''}`} data-testid={`${role}-upload`}>
-    <div className="field-label"><FileImageOutlined /> {label}</div>
+  return <div className={`image-uploader ${compact ? 'compact' : ''}`} data-testid={`${role}-upload`} role="group" aria-label={label}>
+    {!hideLabel && <div className="field-label"><FileImageOutlined aria-hidden="true" /> {label}</div>}
     {value ? <div className="uploaded-image">
       <div className="uploaded-preview"><Image src={value.url} alt={label} /></div>
       <div className="uploaded-meta"><strong title={value.name}>{value.name}</strong><span>{value.width} × {value.height} · {value.format} · {formatBytes(value.size_bytes)}</span></div>

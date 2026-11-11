@@ -55,3 +55,8 @@ export function formatMetric(value: unknown, precision = 3): string {
   if (value === undefined || value === null || typeof value !== 'number' || Number.isNaN(value)) return '—';
   return value.toFixed(precision);
 }
+
+export function errorCode(error: unknown): string | undefined {
+  if (axios.isAxiosError(error)) return (error.response?.data as { error?: { code?: string } } | undefined)?.error?.code;
+  return error instanceof Error && 'code' in error && typeof error.code === 'string' ? error.code : undefined;
+}

@@ -11,8 +11,8 @@
   gap:20px
 }
 .analysis-heading h1 {
-  font-size:32px;
-  margin:0 0 8px;
+  font-size:28px;
+  margin:0;
   color:#102b3d;
   letter-spacing:-.6px
 }
@@ -358,7 +358,7 @@
     font-size:20px
   }
   .analysis-heading h1 {
-    font-size:24px
+    font-size:26px
   }
 }
 

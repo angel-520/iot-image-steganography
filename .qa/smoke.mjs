@@ -9,7 +9,7 @@ try {
   let embedded;
   page.on('response',async response=>{if(response.url().includes('/api/tasks/')){try{const data=await response.json();if(data.status==='completed' && data.result?.carrier) embedded=data.result;}catch{}}});
   await page.goto('http://127.0.0.1:8017/multimodal');
-  await page.getByRole('heading',{name:'让信息，跨越载体'}).waitFor();
+  await page.getByRole('heading',{name:'多模态实验'}).waitFor();
   await page.locator('input[type=file]').first().setInputFiles(path.resolve('.qa/cover.wav'));
   await page.getByText('cover.wav',{exact:true}).waitFor();
   await page.getByRole('textbox',{name:'秘密文字',exact:true}).fill('浏览器完整往返验证 🔐');

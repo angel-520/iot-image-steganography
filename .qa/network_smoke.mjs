@@ -11,7 +11,7 @@ try {
   const select=async(name,text)=>{await page.locator('.ant-select').filter({has:page.getByRole('combobox',{name,exact:true})}).locator('.ant-select-selector').click();await page.getByText(text,{exact:true}).last().click();};
   const shot=async name=>{await page.evaluate(()=>window.scrollTo(0,0));await page.waitForTimeout(400);await page.screenshot({path:path.resolve(`.qa/${name}.png`),fullPage:true});};
   await page.goto('http://127.0.0.1:8017/network-lab');
-  await page.getByRole('heading',{name:'在流量之间，观察信息'}).waitFor();
+  await page.getByRole('heading',{name:'网络隐写'}).waitFor();
   await page.getByRole('textbox',{name:'网络秘密文本'}).fill('网络浏览器往返 🔐');
   await page.getByRole('spinbutton',{name:'网络抖动',exact:true}).fill('15');
   await page.getByRole('spinbutton',{name:'网络抖动',exact:true}).press('Tab');

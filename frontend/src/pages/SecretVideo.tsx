@@ -175,7 +175,7 @@ export default function SecretVideo() {
   const invitationUrl = room && token ? `${location.origin}/secret-video#room=${room}&token=${token}` : '';
   const local = session.current?.channel;
   const readablePeer = (id: string) => id === 'all' ? '全体成员' : people.find(person => person.id === id)?.name ?? id.slice(0, 8);
-  return <div className="sv-page"><div className="page-heading"><div><div className="eyebrow">SecretVideo / 多人实时视频隐写</div><h1>在画面里，传递秘密</h1><p>2–4 人通话，分享加密文字、文件与语音转写。</p></div></div>
+  return <div className="sv-page"><div className="page-heading"><div><h1>视频通话</h1></div></div>
     {!window.isSecureContext && <Alert showIcon type="error" message="请使用 HTTPS 地址或 localhost 开启摄像头与通话加密。" />}
     {error && <Alert closable showIcon type="warning" message={error} onClose={() => setError(undefined)} />}
     <Card title="房间与密钥" extra={<Tag color={connected ? 'success' : 'default'}>{state}</Tag>}><div className="sv-setup"><Input aria-label="成员昵称" maxLength={32} value={name} disabled={connected || busy} onChange={event => setName(event.target.value)} placeholder="成员昵称" /><Input aria-label="房间编号" value={room} disabled={connected || busy} onChange={event => setRoom(event.target.value)} placeholder="房间编号" /><Input.Password aria-label="房间邀请令牌" value={token} disabled={connected || busy} onChange={event => setToken(event.target.value)} placeholder="邀请令牌" /><Input.Password aria-label="群聊隐写密钥" autoComplete="new-password" value={key} onChange={event => { setKey(event.target.value); if (local) local.groupKey = event.target.value; }} placeholder="输入与其他成员一致的群聊密钥" /></div>

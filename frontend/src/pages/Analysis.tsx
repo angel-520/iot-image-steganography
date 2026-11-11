@@ -1,4 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { HandoffNotice, useExperimentHandoff } from '../hooks/useExperiments';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Alert, Button, Card, Checkbox, Descriptions, Empty, Image, Input, InputNumber,
   Progress, Radio, Select, Space, Table, Tabs, Tag, Tooltip, Typography, message,
@@ -126,8 +128,26 @@ function StatisticsPanel() {
 }
 
 function QualityPanel() {
-  const [original,setOriginal]=useState<UploadedImage>();const [stego,setStego]=useState<UploadedImage>();const job=useJob();const quality=job.result?.quality as {mse:Numeric;psnr:Numeric;ssim:Numeric}|undefined;
-  return <div className="analysis-stack"><div className="analysis-two"><ImageUploader label="原始载体图片" value={original} onChange={value=>{setOriginal(value);job.reset();}} role="reference"/><ImageUploader label="隐写结果图片" value={stego} onChange={value=>{setStego(value);job.reset();}} role="stego"/></div><div><Button type="primary" disabled={!original||!stego} loading={job.loading} onClick={()=>{void job.run('/analysis/quality',{original_id:original?.id,stego_id:stego?.id});}}>计算图像质量</Button></div><JobStatus task={job.task} loading={job.loading} error={job.error}/>{quality&&<><Measures items={[{label:'PSNR',value:`${metric(quality.psnr)} dB`,hint:'峰值信噪比'},{label:'SSIM',value:metric(quality.ssim,6),hint:'结构相似性'},{label:'MSE',value:metric(quality.mse,6),hint:'均方误差'}]}/><Exports taskId={job.task?.id}/></>}<p className="analysis-note">请选择两张尺寸相同的图片。</p></div>;
+  const handoff = useExperimentHandoff();
+  const navigate = useNavigate();
+  const [original, setOriginal] = useState<UploadedImage | undefined>(handoff.experiment?.cover);
+  const [stego, setStego] = useState<UploadedImage | undefined>(handoff.experiment?.stego);
+  const job = useJob();
+  const quality = job.result?.quality as { mse: Numeric; psnr: Numeric; ssim: Numeric } | undefined;
+  useEffect(() => {
+    if (job.failureCode !== 'file_not_found') return;
+    setOriginal(undefined); setStego(undefined); handoff.expire(); job.reset();
+  }, [job.failureCode]);
+  const changeOriginal = (value: UploadedImage | undefined) => { setOriginal(value); job.reset(); handoff.detach(); handoff.dismiss(); };
+  const changeStego = (value: UploadedImage | undefined) => { setStego(value); job.reset(); handoff.detach(); handoff.dismiss(); };
+  return <div className="analysis-stack">
+    <HandoffNotice visible={handoff.expired} onClose={handoff.dismiss} />
+    <div className="analysis-two"><ImageUploader label="原始载体图片" value={original} onChange={changeOriginal} role="reference" /><ImageUploader label="隐写结果图片" value={stego} onChange={changeStego} role="stego" /></div>
+    <div className="result-actions"><Button type="primary" disabled={!original || !stego} loading={job.loading} onClick={() => { void job.run('/analysis/quality', { original_id: original?.id, stego_id: stego?.id }); }}>计算图像质量</Button>{handoff.experiment && <Button onClick={() => navigate('/embed', { state: { experimentId: handoff.experiment!.id } })}>返回实验结果</Button>}</div>
+    <JobStatus task={job.task} loading={job.loading} error={job.error} />
+    {quality && <><Measures items={[{ label: 'PSNR', value: `${metric(quality.psnr)} dB`, hint: '峰值信噪比' }, { label: 'SSIM', value: metric(quality.ssim, 6), hint: '结构相似性' }, { label: 'MSE', value: metric(quality.mse, 6), hint: '均方误差' }]} /><Exports taskId={job.task?.id} /></>}
+    <p className="analysis-note">请选择两张尺寸相同的图片。质量指标用于比较图像变化，不代表隐写安全性。</p>
+  </div>;
 }
 
 function CapacityPanel({algorithms}:{algorithms:Algorithm[]}) {
@@ -184,7 +204,10 @@ function EvaluationPanel() {
 }
 
 function PerformancePanel({algorithms}:{algorithms:Algorithm[]}) {
-  return <Card className="analysis-page-card"><Tabs className="analysis-perf-tabs" destroyOnHidden items={[
+  const [search, setSearch] = useSearchParams();
+  const panels = ['quality', 'capacity', 'recovery', 'benchmark', 'robustness', 'evaluate'];
+  const panel = search.get('panel') ?? 'quality';
+  return <Card className="analysis-page-card"><Tabs className="analysis-perf-tabs" activeKey={panels.includes(panel) ? panel : 'quality'} onChange={key => setSearch(current => { current.set('tab', 'performance'); current.set('panel', key); return current; }, { replace: true })} destroyOnHidden items={[
     {key:'quality',label:'图像质量',children:<QualityPanel/>},
     {key:'capacity',label:'容量分析',children:<CapacityPanel algorithms={algorithms}/>},
     {key:'recovery',label:'恢复一致性',children:<RecoveryPanel/>},
@@ -195,8 +218,11 @@ function PerformancePanel({algorithms}:{algorithms:Algorithm[]}) {
 }
 
 export function Analysis() {
+  const [search, setSearch] = useSearchParams();
+  const tabs = ['auto', 'planes', 'statistics', 'performance'];
+  const tab = search.get('tab') ?? 'auto';
   const {algorithms,error,loading}=useAlgorithms();
-  return <div className="analysis-workspace"><div className="analysis-heading"><div><h1>安全性分析</h1><p>查看位平面、统计特征与图像质量。</p></div></div>{error&&<Alert type="error" showIcon message={error}/>}<Tabs className="analysis-tabs" defaultActiveKey="auto" destroyOnHidden items={[
+  return <div className="analysis-workspace"><div className="analysis-heading"><div><h1>安全分析</h1></div></div>{error&&<Alert type="error" showIcon message={error}/>}<Tabs className="analysis-tabs" activeKey={tabs.includes(tab) ? tab : 'auto'} onChange={key => setSearch(current => { current.set('tab', key); return current; }, { replace: true })} destroyOnHidden items={[
     {key:'auto',label:<span><FileSearchOutlined/> 自动提取分析</span>,children:<AutoDetectPanel algorithms={algorithms}/>},
     {key:'planes',label:<span><AppstoreOutlined/> 位平面可视化</span>,children:<BitplanePanel/>},
     {key:'statistics',label:<span><BarChartOutlined/> 隐写痕迹检测</span>,children:<StatisticsPanel/>},

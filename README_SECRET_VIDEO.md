@@ -1,6 +1,6 @@
 # SecretVideo 多人实时音视频隐写
 
-独立入口：`/secret-video` 或侧栏“SecretVideo 通话”。原图像、多模态及网络实验室页面保持兼容，沿用现有 React / Ant Design / ECharts 和配色。
+独立入口：`/secret-video` 或顶部导航“通信实验 → 视频通话”。原图像、多模态及网络实验室页面保持兼容，沿用现有 React / Ant Design / ECharts 和配色。
 
 ## 实际数据路径
 

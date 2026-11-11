@@ -262,7 +262,7 @@ function RemoteTransfer() {
 export default function NetworkLab() {
   const [compatibilityError, setCompatibilityError] = useState<string>();
   useEffect(() => { const controller = new AbortController(); void api.get('/network-lab/capabilities', { signal: controller.signal }).catch(error => { if (!controller.signal.aborted) setCompatibilityError(errorMessage(error)); }); return () => controller.abort(); }, []);
-  return <div className="network-page"><div className="page-heading"><div><div className="eyebrow">Network / 网络隐写实验</div><h1>在流量之间，观察信息</h1><p>网络隐写、双机传输与流量分析。</p></div></div>
+  return <div className="network-page"><div className="page-heading"><div><h1>网络隐写</h1></div></div>
     {compatibilityError && <Alert type="error" showIcon message={compatibilityError} />}
     <Tabs destroyInactiveTabPane items={[{ key: 'udp', label: 'UDP 信道', children: <Experiment /> }, { key: 'remote', label: '双机 / 公网', children: <RemoteTransfer /> }, { key: 'fields', label: '协议字段 · 离线', children: <Experiment fields /> }, { key: 'analysis', label: '流量分析与鲁棒性', children: <TrafficAnalysis /> }]} />
   </div>;

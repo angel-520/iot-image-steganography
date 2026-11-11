@@ -178,7 +178,7 @@ function AttackPanel() {
 }
 
 export default function Multimodal() {
-  return <div className="mm-page"><div className="page-heading"><div><div className="eyebrow">Multimodal / 多模态实验</div><h1>让信息，跨越载体</h1></div></div>
+  return <div className="mm-page"><div className="page-heading"><div><h1>多模态实验</h1></div></div>
     <Tabs destroyInactiveTabPane items={[{ key: 'embed', label: '多模态嵌入与提取', children: <EmbedExtract /> }, { key: 'cooperative', label: '多载体协同', children: <Cooperative /> }, { key: 'attack', label: '安全攻防实验', children: <AttackPanel /> }]} />
   </div>;
 }
