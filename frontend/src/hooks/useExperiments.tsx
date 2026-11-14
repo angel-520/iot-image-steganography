@@ -82,5 +82,5 @@ export function useExperimentHandoff() {
   return { experiment, expired, dismiss: () => setExpired(false), detach, expire };
 }
 export function HandoffNotice({ visible, onClose }: { visible: boolean; onClose: () => void }) {
-  return visible ? <Alert className="handoff-notice" type="info" showIcon closable onClose={onClose} message="实验暂存已失效，请重新上传图片" /> : null;
+  return visible ? <Alert className="handoff-notice" type="info" showIcon closable onClose={onClose} message="暂存结果已失效，请重新上传图片" /> : null;
 }

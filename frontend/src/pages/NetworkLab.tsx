@@ -74,13 +74,13 @@ function TrafficView({ data }: { data: AnyResult }) {
       { key: 'gaps', label: '时间间隔', children: <ResultCharts option={{ color: ['#19384b'], tooltip: { trigger: 'axis' }, xAxis: { type: 'value', name: '到达序号' }, yAxis: { type: 'value', name: 'ms' }, dataZoom: [{ type: 'inside' }, { type: 'slider', bottom: 4 }], grid: { left: 65, bottom: 65, right: 35 }, series: [{ type: 'line', showSymbol: false, data: rows.filter(r => r.gap_ms != null).map(r => [r.index, r.gap_ms]) }] }} /> },
       { key: 'histogram', label: '分布对比', children: <div className="network-two"><ResultCharts height={250} option={{ color: ['#0d8f87'], tooltip: { trigger: 'axis' }, xAxis: { type: 'category', name: '包长', data: lengths.labels }, yAxis: { type: 'value', name: '包数' }, series: [{ type: 'bar', data: lengths.counts }] }} /><ResultCharts height={250} option={{ color: ['#19384b'], tooltip: { trigger: 'axis' }, xAxis: { type: 'category', name: '间隔 ms', data: gaps.labels }, yAxis: { type: 'value', name: '包数' }, series: [{ type: 'bar', data: gaps.counts }] }} /></div> },
       { key: 'detection', label: '隐蔽信道检测', children: <Detection data={data.detection} /> },
-      { key: 'packets', label: '协议字段明细', children: <Table size="small" rowKey="index" scroll={{ x: 900 }} pagination={{ pageSize: 10, showSizeChanger: true }} dataSource={rows} columns={[{ title: '#', dataIndex: 'index', width: 65 }, { title: '时间 (s)', dataIndex: 't', render: v => formatMetric(v, 6) }, { title: 'IP 包长', dataIndex: 'length' }, { title: '协议', dataIndex: 'protocol' }, { title: 'IP ID', dataIndex: 'ip_id' }, { title: 'TCP Seq', dataIndex: 'tcp_seq' }, { title: '源端口', dataIndex: 'sport' }, { title: '目的端口', dataIndex: 'dport' }, { title: '实验序号', dataIndex: 'sequence' }]} /> },
+      { key: 'packets', label: '协议字段明细', children: <Table size="small" rowKey="index" scroll={{ x: 900 }} pagination={{ pageSize: 10, showSizeChanger: true }} dataSource={rows} columns={[{ title: '#', dataIndex: 'index', width: 65 }, { title: '时间 (s)', dataIndex: 't', render: v => formatMetric(v, 6) }, { title: 'IP 包长', dataIndex: 'length' }, { title: '协议', dataIndex: 'protocol' }, { title: 'IP ID', dataIndex: 'ip_id' }, { title: 'TCP Seq', dataIndex: 'tcp_seq' }, { title: '源端口', dataIndex: 'sport' }, { title: '目的端口', dataIndex: 'dport' }, { title: '数据包序号', dataIndex: 'sequence' }]} /> },
     ]} />
   </div>;
 }
 
 function ComparedResult({ result, taskId }: { result: AnyResult; taskId?: string }) {
-  return <Card title="实验轨迹与恢复分析" extra={taskId && <Button href={exportUrl(taskId)} icon={<DownloadOutlined />}>导出报告</Button>}>
+  return <Card title="传输记录与恢复分析" extra={taskId && <Button href={exportUrl(taskId)} icon={<DownloadOutlined />}>导出报告</Button>}>
     {result.transport && <Alert showIcon type="success" message={`UDP 传输完成 · ${result.transport.host}:${result.transport.receiver_port}`} description={`发送 ${result.transport.sent_packets} 包 / 接收 ${result.transport.received_packets} 包 · 耗时 ${formatMetric(result.transport.elapsed_seconds)} 秒`} />}
 
     <Tabs items={[{ key: 'baseline', label: '基线流量', children: <><div className="network-download"><Button href={downloadUrl(result.baseline.pcap ?? result.file)} icon={<DownloadOutlined />}>下载基线 PCAP</Button></div><TrafficView data={result.baseline} /></> }, { key: 'impaired', label: '扰动后流量', children: <><div className="network-download"><Button href={downloadUrl(result.impaired.pcap)} icon={<DownloadOutlined />}>下载扰动 PCAP</Button></div><TrafficView data={result.impaired} /></> }]} />
@@ -90,7 +90,7 @@ function ComparedResult({ result, taskId }: { result: AnyResult; taskId?: string
 
 function Experiment({ fields = false }: { fields?: boolean }) {
   const [codec, setCodec] = useState<Codec>({ ...defaults, channel: fields ? 'ip_id' : 'timing' });
-  const [text, setText] = useState('ISTG 网络实验');
+  const [text, setText] = useState('ISTG 网络通信');
   const [execution, setExecution] = useState('simulation');
   const [impairment, setImpairment] = useState(noDisturbance);
   const [encryption, setEncryption] = useState('none');
@@ -111,7 +111,7 @@ function Experiment({ fields = false }: { fields?: boolean }) {
       <div className="network-control"><Button loading={checking} disabled={!ready} onClick={() => void inspect()}>估算包数与传输时长</Button>{estimate && <p className="network-note">数据 {formatBytes(estimate.packet_bytes)} · {estimate.packets} 包 · 预计耗时 {formatMetric(estimate.planned_seconds)} 秒{!estimate.active_fits && <Tag color="warning">预计超过 45 秒，请缩短文字或选择离线模拟</Tag>}</p>}</div>
     </Card></div><Card title="网络扰动参数 · 与基线对比"><ImpairmentFields value={impairment} onChange={v => { setImpairment(v); job.reset(); }} /></Card></fieldset>
     {!parametersOK && <Alert type="error" message="长间隔至少比短间隔大 4 ms；长包载荷必须大于短包" />}{bytes > 128 && <Alert type="error" message="秘密内容超过 128 UTF-8 字节，请缩短文本" />}
-    <div><Button type="primary" size="large" icon={<PlayCircleOutlined />} loading={job.loading} disabled={!ready || checking || (execution === 'loopback' && !fields && estimate?.active_fits === false) || (encryption !== 'none' && (!password || password !== confirm))} onClick={() => void run()}>{fields ? '生成 PCAP 并提取' : execution === 'loopback' ? '开始 UDP 传输' : '开始离线实验'}</Button></div><JobStatus task={job.task} loading={job.loading} error={job.error} />
+    <div><Button type="primary" size="large" icon={<PlayCircleOutlined />} loading={job.loading} disabled={!ready || checking || (execution === 'loopback' && !fields && estimate?.active_fits === false) || (encryption !== 'none' && (!password || password !== confirm))} onClick={() => void run()}>{fields ? '生成 PCAP 并提取' : execution === 'loopback' ? '开始 UDP 传输' : '开始离线模拟'}</Button></div><JobStatus task={job.task} loading={job.loading} error={job.error} />
     {job.result && <ComparedResult result={job.result} taskId={job.task?.id} />}
   </div>;
 }
@@ -126,7 +126,7 @@ function TrafficAnalysis() {
   const job = useJob();
   const run = async (robustness = false) => { try { await job.run(`/network-lab/${robustness ? 'robustness' : 'analyze'}`, { file_id: file?.id, ...codec, ...(password ? { password } : {}), ...(robustness ? { impairment } : {}) }); } finally { setPassword(''); } };
   return <div className="network-stack">
-    <fieldset className="network-fieldset" disabled={job.loading}><div className="network-two"><Card title="导入实验流量"><Upload.Dragger accept=".pcap,.pcapng,.cap" multiple={false} showUploadList={false} disabled={uploading} beforeUpload={selected => {
+    <fieldset className="network-fieldset" disabled={job.loading}><div className="network-two"><Card title="导入流量文件"><Upload.Dragger accept=".pcap,.pcapng,.cap" multiple={false} showUploadList={false} disabled={uploading} beforeUpload={selected => {
       if (selected.size > 16 * 1024 ** 2) { setUploadError('PCAP 不能超过 16 MiB'); return false; }
       const form = new FormData(); form.append('file', selected); setUploading(true); setUploadError(undefined); job.reset();
       void api.post('/network-lab/uploads', form).then(({ data }) => setFile(data)).catch(error => { setFile(undefined); setUploadError(errorMessage(error)); }).finally(() => setUploading(false));

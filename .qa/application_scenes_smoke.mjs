@@ -1,105 +1,207 @@
 import assert from 'node:assert/strict';
+import { createHash, randomUUID } from 'node:crypto';
+import fs from 'node:fs/promises';
+import os from 'node:os';
 import path from 'node:path';
 import { chromium } from '../frontend/node_modules/playwright/index.mjs';
 
 const origin = process.env.ISTG_BASE_URL ?? 'http://127.0.0.1:8017';
-const browser = await chromium.launch({channel:'msedge', headless:true});
-const page = await browser.newPage({viewport:{width:1440,height:900}});
-const errors=[];
-page.on('pageerror', error=>errors.push(error.message));
-const visible = locator=>locator.waitFor({state:'visible'});
-const scenes=[['copyright','数字版权与水印验证'],['medical','医疗影像隐私保护'],['robustness','鲁棒性传输测试']];
-async function shot(name) { await page.evaluate(()=>window.scrollTo(0,0)); await page.waitForTimeout(750); await page.screenshot({path:path.resolve('.qa/scene-'+name+'.png'),fullPage:true}); }
-async function overflow(name) { const geometry=await page.evaluate(()=>({scroll:document.documentElement.scrollWidth,width:innerWidth})); assert(geometry.scroll<=geometry.width+2, name+' overflow '+JSON.stringify(geometry)); }
+const output = process.env.ISTG_QA_OUTPUT_DIR ?? await fs.mkdtemp(path.join(os.tmpdir(), 'istg-scenes-'));
+await fs.mkdir(output, { recursive: true });
+const browser = await chromium.launch({ channel: 'msedge', headless: true });
+const contexts = [], errors = [], checks = [];
+const visible = locator => locator.waitFor({ state: 'visible' });
+function observe(page) { page.on('pageerror', error => errors.push(error.message)); page.setDefaultTimeout(25000); }
+async function layout(page, name, width) {
+  const geometry = await page.evaluate(() => ({ width: document.documentElement.scrollWidth, text: document.body.innerText }));
+  assert(geometry.width <= width + 2, name + ' overflows: ' + geometry.width);
+  assert(!/图片仅用于本次|不等同于完整|本实验用于|隐写实验|通信实验|多模态实验/.test(geometry.text), 'Redundant copy remains: ' + name);
+  checks.push(name);
+}
+async function shot(page, name) { await page.screenshot({ path: path.join(output, name + '.png'), fullPage: true }); }
+async function waitTask(request, id) {
+  for (let attempt = 0; attempt < 240; attempt++) {
+    const response = await request.get(origin + '/api/tasks/' + id); assert(response.ok());
+    const task = await response.json();
+    if (task.status === 'completed') return task.result;
+    if (task.status === 'failed') throw Error(JSON.stringify(task.error));
+    await new Promise(resolve => setTimeout(resolve, 100));
+  }
+  throw Error('Task timeout: ' + id);
+}
+async function register(page, username, password) {
+  await page.goto(origin + '/applications/copyright', { waitUntil: 'networkidle' });
+  await page.getByText('注册', { exact: true }).click();
+  await page.getByLabel('版权用户名', { exact: true }).fill(username);
+  await page.getByLabel('版权密码', { exact: true }).fill(password);
+  await page.getByLabel('版权确认密码', { exact: true }).fill(password);
+  await page.getByRole('button', { name: /注册并登录/ }).click();
+  await visible(page.getByRole('button', { name: /添加作品/ }));
+}
 try {
-  for(const width of process.env.ISTG_SKIP_LAYOUT ? [] : [1440,1280,768,390]) {
-    await page.setViewportSize({width,height:900});
-    for(const [scene,title] of scenes) {
-      await page.goto(origin+'/applications/'+scene); await visible(page.getByRole('heading',{name:title,exact:true}));
-      await page.waitForTimeout(250); await overflow(scene+' '+width); await shot(width+'-'+scene);
-      await page.getByText(/^高级设置/).click(); await overflow(scene+' settings '+width); await shot(width+'-'+scene+'-settings');
+  const context = await browser.newContext({ viewport: { width: 1440, height: 900 }, reducedMotion: 'reduce' });
+  contexts.push(context);
+  const page = await context.newPage(); observe(page);
+  const scenes = [['medical', '影像信息嵌入'], ['robustness', '压缩图像高清恢复'], ['copyright', '数字版权保护']];
+  for (const width of process.env.ISTG_SKIP_LAYOUT ? [] : [1440, 1280, 768, 390]) {
+    await page.setViewportSize({ width, height: 900 });
+    for (const [scene, title] of scenes) {
+      await page.goto(origin + '/applications/' + scene, { waitUntil: 'networkidle' });
+      await visible(page.getByRole('heading', { name: title, exact: true }));
+      await layout(page, scene + ':' + width, width);
+      if (scene === 'medical') {
+        await page.getByText(/^高级设置/).click();
+        await layout(page, scene + ':settings:' + width, width);
+      } else {
+        for (const tab of scene === 'copyright' ? ['版权标识', '标识验证', '授权管理'] : ['恢复高清图像']) {
+          await page.getByRole('tab', { name: tab, exact: true }).click();
+          await layout(page, scene + ':' + tab + ':' + width, width);
+        }
+      }
+      await shot(page, scene + '-' + width);
     }
   }
-  console.log('12 scene layouts and expanded settings verified');
-  await page.setViewportSize({width:1440,height:900});
-  await page.goto(origin);
-  const groups=await page.locator('.desktop-navigation > button').allTextContents();
-  assert.deepEqual(groups.map(text=>text.trim()),['隐写实验','分析评估','通信实验','应用场景']);
-  for(const [scene,title] of scenes) {
-    await page.getByRole('button',{name:'应用场景',exact:true}).hover();
-    await page.getByRole('menuitem',{name:title,exact:true}).click();
-    await page.waitForURL(origin+'/applications/'+scene); await visible(page.getByRole('heading',{name:title,exact:true}));
-    assert(await page.getByRole('button',{name:'应用场景',exact:true}).evaluate(el=>el.classList.contains('active')));
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto(origin, { waitUntil: 'networkidle' });
+  assert.deepEqual((await page.locator('.desktop-navigation > button').allTextContents()).map(text => text.trim()), ['信息隐写', '分析评估', '通信应用', '应用场景']);
+  for (const [scene, title] of scenes) {
+    await page.getByRole('button', { name: '应用场景', exact: true }).click();
+    await page.getByRole('menuitem', { name: title, exact: true }).click();
+    await page.waitForURL(origin + '/applications/' + scene);
+    await visible(page.getByRole('heading', { name: title, exact: true }));
   }
-  const trigger=page.getByRole('button',{name:'应用场景',exact:true});
-  await page.mouse.move(0,300); await trigger.focus(); await trigger.press('ArrowDown');
-  await visible(page.getByRole('menuitem',{name:scenes[0][1],exact:true})); await page.waitForTimeout(150);
-  assert(await page.evaluate(()=>!!document.activeElement.closest('[role="menu"]')));
-  await page.keyboard.press('Escape');
-  await page.getByRole('menu').waitFor({state:'hidden'});
-  for(const width of [1280,1100,1024]) {
-    await page.setViewportSize({width,height:900});
-    await page.waitForTimeout(300);
-    const rects=await page.locator('.site-header-inner > *').evaluateAll(els=>els.map(el=>({left:el.getBoundingClientRect().left,right:el.getBoundingClientRect().right})));
-    assert(rects[0].right<=rects[1].left && rects[1].right<=rects[2].left, 'Header controls overlap '+width); await overflow('header '+width);
-  }
-  await page.setViewportSize({width:390,height:844});
-  for(const [scene,title] of scenes) {
-    await page.getByRole('button',{name:'打开导航',exact:true}).click();
-    await page.getByRole('navigation',{name:'移动导航'}).getByRole('link',{name:title,exact:true}).click();
-    await page.waitForURL(origin+'/applications/'+scene); await page.getByRole('dialog').waitFor({state:'hidden'});
-  }
-  await page.setViewportSize({width:1440,height:900}); await page.goto(origin);
-  for(const [id,scene] of [['medical-imaging','medical'],['robust-transmission','robustness'],['copyright-protection','copyright']]) {
-    assert.equal(await page.locator('#'+id).getByRole('link',{name:'进入场景',exact:true}).getAttribute('href'),'/applications/'+scene);
-  }
-  await visible(page.getByRole('heading',{name:'探索你的图像隐写场景',exact:true}));
-  console.log('Desktop, keyboard, mobile navigation and homepage scene entrances verified');
-  const cover=await page.evaluate(()=>{ const canvas=document.createElement('canvas');canvas.width=canvas.height=256;const ctx=canvas.getContext('2d');const image=ctx.createImageData(256,256);let seed=47;for(let i=0;i<image.data.length;i++){seed^=seed<<13;seed^=seed>>>17;seed^=seed<<5;image.data[i]=i%4===3?255:seed&255;}ctx.putImageData(image,0,0);return canvas.toDataURL('image/png').split(',')[1]; });
-  const upload=async role=>{await page.getByTestId(role+'-upload').locator('input[type=file]').setInputFiles({name:'scene-cover.png',mimeType:'image/png',buffer:Buffer.from(cover,'base64')});};
-  const select=async (label,option)=>{await page.locator('.ant-select').filter({has:page.getByRole('combobox',{name:label,exact:true})}).locator('.ant-select-selector').click();await page.locator('.ant-select-dropdown:visible .ant-select-item-option-content').getByText(option,{exact:true}).click();};
-  async function write(scene,{encrypted=false,scatter=false}={}) {
-    await page.goto(origin+'/applications/'+scene); await upload('cover');
-    if(scene==='copyright') {await page.getByRole('textbox',{name:'作者或机构',exact:true}).fill('ISTG 测试作者'); await page.getByRole('textbox',{name:'作品名称',exact:true}).fill('湖岸与远山');await page.getByRole('textbox',{name:'权利声明',exact:true}).fill('版权所有，未经许可不得转载。');await page.getByLabel('创建日期',{exact:true}).fill('2026-11-11');}
-    else {await page.getByRole('textbox',{name:'检查说明',exact:true}).fill('影像说明测试：仅作图像隐写演示。'); await page.getByRole('textbox',{name:'影像编号',exact:true}).fill('DEMO-1101');}
-    if(encrypted||scatter) {await page.getByText(/^高级设置/).click();}
-    if(scatter) {await select('隐写算法','Random / Scatter LSB');await page.getByRole('textbox',{name:'散布位置密钥',exact:true}).fill('scene-position-secret-47');await page.getByRole('spinbutton',{name:'每通道低位数',exact:true}).fill('2');}
-    if(encrypted) {await select('加密方式','AES-256-GCM'); await page.getByRole('textbox',{name:'加密密码',exact:true}).fill('scene-encryption-secret-47');await page.getByRole('textbox',{name:'确认密码',exact:true}).fill('scene-encryption-secret-47');}
-    await page.waitForFunction(()=>!document.querySelector('[data-testid="scene-embed-submit"]').disabled);
-    const request=page.waitForRequest(req=>req.url().endsWith('/api/embed')&&req.method()==='POST');
-    await page.getByTestId('scene-embed-submit').click(); const data=(await request).postDataJSON();
-    await visible(page.getByText('写入后恢复检查通过',{exact:true}));
-    const state=await page.evaluate(()=>({state:history.state.usr,url:location.href,local:JSON.stringify(localStorage),session:JSON.stringify(sessionStorage)}));
-    assert.deepEqual(Object.keys(state.state),['experimentId']); assert(!JSON.stringify(state).includes('scene-encryption-secret')); assert(!JSON.stringify(state).includes('scene-position-secret')); assert(!JSON.stringify(state).includes(data.text));
-    if(encrypted) assert.equal(await page.getByRole('textbox',{name:'验证解密密码',exact:true}).inputValue(),'');
-    if(scatter) assert.equal(await page.getByRole('textbox',{name:'验证散布位置密钥',exact:true}).inputValue(),'');
-    const fillCredentials=async()=>{if(encrypted) await page.getByRole('textbox',{name:'验证解密密码',exact:true}).fill('scene-encryption-secret-47');if(scatter) await page.getByRole('textbox',{name:'验证散布位置密钥',exact:true}).fill('scene-position-secret-47');};
-    await fillCredentials(); await page.getByTestId('scene-verify').click();await visible(page.getByTestId('scene-verification-result'));await visible(page.getByText('与写入内容一致',{exact:true}));
-    assert.equal(await page.getByRole('textbox',{name:scene==='copyright'?'提取出的版权信息':'恢复的影像说明',exact:true}).inputValue(),data.text);
-    if(encrypted) await visible(page.getByText('认证解密通过',{exact:true}));
-    for(const label of [scene==='copyright'?'下载水印图片':'下载隐写图片','导出报告','下载文本']) {const href=await page.getByRole('link',{name:new RegExp(label)}).getAttribute('href');const response=await page.request.get(new URL(href,origin).href);assert(response.ok(),label+' failed');assert((await response.body()).length>0);}
-    await shot(scene+(scatter?'-scatter':encrypted?'-encrypted':'')+'-result');
-    for(const width of [1280,768,390]) {await page.setViewportSize({width,height:900});await overflow('result '+scene+width);await shot(width+'-'+scene+'-result');}
-    await page.setViewportSize({width:1440,height:900});
-    return {data,fillCredentials};
-  }
-  await write('copyright');
-  await page.getByRole('button',{name:'信息提取',exact:true}).click();await page.waitForURL(origin+'/extract');await page.getByTestId('extract-submit').waitFor({state:'visible'});await page.waitForFunction(()=>!(document.querySelector('[data-testid="extract-submit"]') instanceof HTMLButtonElement) || !(document.querySelector('[data-testid="extract-submit"]')).disabled);assert(await page.getByTestId('extract-submit').isEnabled());
-  await page.getByTestId('extract-submit').click();await visible(page.getByRole('textbox',{name:'恢复的秘密文本',exact:true}));
-  await page.getByRole('button',{name:'返回实验结果',exact:true}).click();await page.waitForURL(origin+'/applications/copyright');await visible(page.getByText('写入后恢复检查通过',{exact:true}));
-  await page.getByRole('button',{name:'图像质量分析',exact:true}).click();await page.waitForURL(origin+'/analysis?tab=performance&panel=quality');await page.getByRole('button',{name:'计算图像质量',exact:true}).click();await visible(page.getByText('PSNR',{exact:true}));await page.getByRole('button',{name:'返回实验结果',exact:true}).click();await page.waitForURL(origin+'/applications/copyright');
-  await page.getByRole('button',{name:'传输测试',exact:true}).click();await page.waitForURL(origin+'/applications/robustness');await visible(page.getByRole('button',{name:'更换图片',exact:true}));
-  await page.getByText(/^高级设置/).click();await page.getByRole('spinbutton',{name:'JPEG 质量',exact:true}).fill('100');await page.getByRole('spinbutton',{name:'噪声强度',exact:true}).fill('0');await page.getByRole('spinbutton',{name:'裁剪保留宽高比例',exact:true}).fill('1');await page.getByRole('spinbutton',{name:'尺寸缩放比例',exact:true}).fill('1');
-  await page.getByTestId('scene-robustness-submit').click();await visible(page.getByTestId('scene-robustness-results'));assert(await page.getByTestId('scene-robustness-results').locator('tbody tr').count()>=4);assert(await page.getByTestId('scene-robustness-results').getByText('已恢复',{exact:true}).count()>=3);
-  for(const width of [1440,1280,768,390]) {await page.setViewportSize({width,height:900});await overflow('robustness results '+width);await shot(width+'-robustness-result');}
-  await page.getByRole('checkbox',{name:'图片压缩',exact:true}).uncheck();assert.equal(await page.getByTestId('scene-robustness-results').count(),0);
-  await page.setViewportSize({width:1440,height:900});await write('medical',{encrypted:true});
-  await page.getByRole('button',{name:'修改信息',exact:true}).click();assert.equal(await page.getByRole('textbox',{name:'检查说明',exact:true}).inputValue(),'');await visible(page.getByRole('button',{name:'更换图片',exact:true}));await page.getByText(/^高级设置/).click();assert.equal(await page.getByRole('textbox',{name:'加密密码',exact:true}).inputValue(),'');
-  await write('copyright',{encrypted:true,scatter:true});
-  await page.getByRole('button',{name:'信息提取',exact:true}).click();await page.waitForURL(origin+'/extract');await visible(page.getByRole('textbox',{name:'散布位置密钥',exact:true}));assert.equal(await page.getByRole('textbox',{name:'散布位置密钥',exact:true}).inputValue(),'');assert.equal(await page.getByRole('spinbutton',{name:'每通道低位数',exact:true}).inputValue(),'2');
-  await page.getByRole('button',{name:'返回实验结果',exact:true}).click();await page.waitForURL(origin+'/applications/copyright');
-  await page.reload();await visible(page.getByText('实验暂存已失效，请重新上传图片',{exact:true}));assert.equal(await page.getByText('写入后恢复检查通过',{exact:true}).count(),0);await page.reload();assert.equal(await page.getByText('实验暂存已失效，请重新上传图片',{exact:true}).count(),0);
-  await write('copyright');await page.route('**/api/extract',route=>route.fulfill({status:404,contentType:'application/json',body:JSON.stringify({error:{code:'file_not_found',message:'文件已过期，请重新上传'}})}));await page.getByTestId('scene-verify').click();await visible(page.getByText('实验暂存已失效，请重新上传图片',{exact:true}));assert.equal(await page.getByText('写入后恢复检查通过',{exact:true}).count(),0);await page.unroute('**/api/extract');
-  console.log('Copyright, encrypted medical, encrypted scatter round trips, downloads, reports, handoffs, robustness matrix, refresh and expired-file handling verified');
-  assert.deepEqual(errors,[]);
-} finally {await browser.close();}
+  checks.push('Application navigation');
+  await page.goto(origin + '/applications/medical', { waitUntil: 'networkidle' });
+  const fixture = await page.evaluate(async () => {
+    const canvas = document.createElement('canvas'); canvas.width = 640; canvas.height = 480;
+    const ctx = canvas.getContext('2d'), data = ctx.createImageData(640, 480), rgb = new Uint8Array(640 * 480 * 3);
+    let seed = 71, at = 0;
+    for (let i = 0; i < data.data.length; i += 4) {
+      for (let channel = 0; channel < 3; channel++) { seed ^= seed << 13; seed ^= seed >>> 17; seed ^= seed << 5; const value = seed & 255; data.data[i + channel] = value; rgb[at++] = value; }
+      data.data[i + 3] = 255;
+    }
+    ctx.putImageData(data, 0, 0);
+    const digest = await crypto.subtle.digest('SHA-256', rgb);
+    return { png: canvas.toDataURL('image/png').split(',')[1], pixelHash: [...new Uint8Array(digest)].map(value => value.toString(16).padStart(2, '0')).join('') };
+  });
+  const source = Buffer.from(fixture.png, 'base64');
+  const pngFile = { name: 'source.png', mimeType: 'image/png', buffer: source };
+  await page.locator('input[type=file]').first().setInputFiles(pngFile);
+  await page.getByLabel('信息内容', { exact: true }).fill('影像信息写入与提取验证');
+  await page.getByLabel('记录编号', { exact: true }).fill('record-001');
+  await page.getByTestId('scene-embed-submit').click();
+  await visible(page.getByRole('link', { name: /下载隐写图片/ }));
+  await page.getByTestId('scene-verify').click();
+  await visible(page.getByTestId('scene-verification-result'));
+  assert((await page.getByLabel('提取出的信息', { exact: true }).inputValue()).includes('影像信息写入与提取验证'));
+  checks.push('Information embedding and extraction');
+  await page.goto(origin + '/applications/robustness', { waitUntil: 'networkidle' });
+  await page.locator('input[type=file]').first().setInputFiles(pngFile);
+  await page.getByLabel('JPEG 预览质量', { exact: true }).fill('35');
+  const preparation = page.waitForResponse(response => response.url().endsWith('/api/restoration/prepare') && response.request().method() === 'POST');
+  await page.getByRole('button', { name: '生成可恢复图像', exact: true }).click();
+  const preparedTask = await (await preparation).json();
+  await visible(page.getByText('RGB 像素一致', { exact: true }));
+  const prepared = await waitTask(page.request, preparedTask.id);
+  assert.equal(prepared.metrics.original_pixel_sha256, fixture.pixelHash);
+  assert.equal(prepared.metrics.restored_pixel_sha256, fixture.pixelHash);
+  assert(prepared.metrics.preview_quality.mse > 0);
+  const carrierResponse = await page.request.get(origin + prepared.carrier.download_url);
+  assert(carrierResponse.ok()); const carrier = await carrierResponse.body();
+  assert.equal(carrier.length, prepared.metrics.carrier_bytes);
+  await shot(page, 'recovery-generated');
+  await page.request.delete(origin + '/api/tasks/' + preparedTask.id);
+  await page.getByRole('tab', { name: '恢复高清图像', exact: true }).click();
+  await page.locator('input[type=file]').first().setInputFiles({ name: 'recoverable.png', mimeType: 'image/png', buffer: carrier });
+  const restoration = page.waitForResponse(response => response.url().endsWith('/api/restoration/restore') && response.request().method() === 'POST');
+  await page.getByRole('button', { name: '恢复高清图像', exact: true }).click();
+  const restoredTask = await (await restoration).json();
+  await visible(page.getByText('RGB 像素一致', { exact: true }));
+  const restored = await waitTask(page.request, restoredTask.id);
+  assert.equal(restored.metrics.restored_pixel_sha256, fixture.pixelHash);
+  await page.locator('input[type=file]').first().setInputFiles(pngFile);
+  await page.getByRole('button', { name: '恢复高清图像', exact: true }).click();
+  await visible(page.getByText(/未找到恢复信息|恢复文件的图像格式不匹配/));
+  checks.push('Self-contained exact RGB recovery after source task deletion');
+  checks.push('Ordinary PNG is rejected as missing recovery data');
+  const readerContext = await browser.newContext({ viewport: { width: 1440, height: 900 }, reducedMotion: 'reduce' });
+  contexts.push(readerContext); const reader = await readerContext.newPage(); observe(reader);
+  const suffix = randomUUID().replaceAll('-', '').slice(0, 12), ownerName = 'owner_' + suffix, readerName = 'reader_' + suffix;
+  await register(page, ownerName, 'copyright-owner-password');
+  await register(reader, readerName, 'copyright-reader-password');
+  await page.getByRole('button', { name: /添加作品/ }).click();
+  await page.locator('input[type=file]').first().setInputFiles(pngFile);
+  await page.getByLabel('作品名称', { exact: true }).fill('高清作品_' + suffix);
+  await page.getByLabel('署名作者', { exact: true }).fill('测试作者');
+  await page.getByLabel('版权声明', { exact: true }).fill('原创作品\n按授权范围使用');
+  const creation = page.waitForResponse(response => response.url().endsWith('/api/copyright/works') && response.request().method() === 'POST');
+  await page.getByRole('button', { name: /保存作品/ }).click();
+  const creationResponse = await creation; assert.equal(creationResponse.status(), 201);
+  const work = (await creationResponse.json()).work;
+  assert(!JSON.stringify(work).includes('/api/files/'));
+  assert.equal((await reader.request.get(origin + work.content_url)).status(), 403);
+  await page.getByRole('tab', { name: '版权标识', exact: true }).click();
+  await page.getByLabel('分发对象', { exact: true }).fill(readerName);
+  const marking = page.waitForResponse(response => response.url().endsWith('/mark') && response.request().method() === 'POST');
+  await page.getByRole('button', { name: /生成版权标识/ }).click();
+  const markResponse = await marking; assert(markResponse.ok()); const mark = (await markResponse.json()).mark;
+  await visible(page.getByText('标识已生成', { exact: true }));
+  const downloadEvent = page.waitForEvent('download');
+  await page.getByRole('button', { name: /下载标识图片/ }).click();
+  const download = await downloadEvent; assert.equal(await download.failure(), null);
+  const marked = await fs.readFile(await download.path());
+  assert.equal((await reader.request.get(origin + mark.url)).status(), 403);
+  await page.getByRole('tab', { name: '标识验证', exact: true }).click();
+  await page.locator('input[type=file]').first().setInputFiles({ name: 'marked.png', mimeType: 'image/png', buffer: marked });
+  await page.getByRole('button', { name: /验证版权标识/ }).click();
+  for (const text of ['签名有效', '图像匹配', '记录匹配']) await visible(page.getByText(text, { exact: true }));
+  await shot(page, 'copyright-verified');
+  await page.getByRole('tab', { name: '授权管理', exact: true }).click();
+  await page.getByLabel('授权用户名', { exact: true }).fill(readerName);
+  await page.getByRole('button', { name: '添加授权', exact: true }).click();
+  await visible(page.getByRole('button', { name: '撤销授权', exact: true }));
+  await reader.getByRole('button', { name: /刷新/ }).click();
+  await visible(reader.getByText('授权有效', { exact: true }));
+  await reader.getByRole('button', { name: '查看作品', exact: true }).click();
+  await visible(reader.locator('.copyright-private-preview'));
+  assert((await reader.locator('.copyright-private-preview').getAttribute('src')).startsWith('blob:'));
+  assert.equal((await reader.request.get(origin + work.content_url + '?download=true')).status(), 403);
+  await reader.keyboard.press('Escape'); await reader.getByRole('dialog').waitFor({ state: 'hidden' });
+  await page.getByLabel('授权用户名', { exact: true }).fill(readerName);
+  await page.getByRole('checkbox', { name: '允许下载原文件', exact: true }).check();
+  await page.getByRole('button', { name: '添加授权', exact: true }).click();
+  await page.getByText('查看与下载', { exact: true }).waitFor();
+  const originalResponse = await reader.request.get(origin + work.content_url + '?download=true');
+  assert.equal(originalResponse.status(), 200);
+  assert.equal(createHash('sha256').update(await originalResponse.body()).digest('hex'), createHash('sha256').update(source).digest('hex'));
+  await page.getByRole('button', { name: '撤销授权', exact: true }).click();
+  await visible(page.getByText('已撤销', { exact: true }));
+  assert.equal((await reader.request.get(origin + work.content_url)).status(), 403);
+  await reader.getByRole('button', { name: /刷新/ }).click();
+  await visible(reader.getByText('授权已撤销', { exact: true }));
+  assert.equal(await reader.getByRole('button', { name: '查看作品', exact: true }).isDisabled(), true);
+  const grantResponse = await page.request.post(origin + '/api/copyright/works/' + work.id + '/grants', { data: { username: readerName, expires_at: Date.now() / 1000 + 0.8, can_download: false } });
+  assert.equal(grantResponse.status(), 200);
+  await new Promise(resolve => setTimeout(resolve, 1100));
+  assert.equal((await reader.request.get(origin + work.content_url)).status(), 403);
+  await reader.getByRole('button', { name: /刷新/ }).click();
+  await visible(reader.getByText('授权已到期', { exact: true }));
+  await page.getByRole('tab', { name: '作品管理', exact: true }).click();
+  await page.getByRole('tab', { name: '授权管理', exact: true }).click();
+  await page.getByRole('tab', { name: '访问记录', exact: true }).click();
+  await visible(page.getByText('撤销访问权限', { exact: true }));
+  await shot(page, 'copyright-access-audit');
+  const signedOut = page.waitForResponse(response => response.url().endsWith('/api/copyright/auth/logout') && response.request().method() === 'POST');
+  await page.getByRole('button', { name: '退出登录', exact: true }).click();
+  assert.equal((await signedOut).status(), 200);
+  await page.getByRole('button', { name: '退出登录', exact: true }).waitFor({ state: 'hidden' });
+  assert.equal((await page.request.get(origin + work.content_url)).status(), 401);
+  checks.push('Independent real owner and reader accounts');
+  checks.push('Private work upload, signed identifier generation and verification');
+  checks.push('View-only grant, original download grant, revoke and expiry enforced');
+  checks.push('Audit records and logout invalidate further access');
+  assert.deepEqual(errors, []);
+  console.log(JSON.stringify({ passed: true, checks, pageErrors: errors, screenshotDirectory: output }, null, 2));
+} catch (error) {
+  console.error(JSON.stringify({ passed: false, error: String(error), checks, pageErrors: errors, screenshotDirectory: output }, null, 2)); throw error;
+} finally { await Promise.all(contexts.map(context => context.close())); await browser.close(); }
