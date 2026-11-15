@@ -143,10 +143,10 @@ function QualityPanel() {
   return <div className="analysis-stack">
     <HandoffNotice visible={handoff.expired} onClose={handoff.dismiss} />
     <div className="analysis-two"><ImageUploader label="原始载体图片" value={original} onChange={changeOriginal} role="reference" /><ImageUploader label="隐写结果图片" value={stego} onChange={changeStego} role="stego" /></div>
-    <div className="result-actions"><Button type="primary" disabled={!original || !stego} loading={job.loading} onClick={() => { void job.run('/analysis/quality', { original_id: original?.id, stego_id: stego?.id }); }}>计算图像质量</Button>{handoff.experiment && <Button onClick={() => navigate(experimentPath(handoff.experiment!), { state: { experimentId: handoff.experiment!.id } })}>返回实验结果</Button>}</div>
+    <div className="result-actions"><Button type="primary" disabled={!original || !stego} loading={job.loading} onClick={() => { void job.run('/analysis/quality', { original_id: original?.id, stego_id: stego?.id }); }}>计算图像质量</Button>{handoff.experiment && <Button onClick={() => navigate(experimentPath(handoff.experiment!), { state: { experimentId: handoff.experiment!.id } })}>返回处理结果</Button>}</div>
     <JobStatus task={job.task} loading={job.loading} error={job.error} />
     {quality && <><Measures items={[{ label: 'PSNR', value: `${metric(quality.psnr)} dB`, hint: '峰值信噪比' }, { label: 'SSIM', value: metric(quality.ssim, 6), hint: '结构相似性' }, { label: 'MSE', value: metric(quality.mse, 6), hint: '均方误差' }]} /><Exports taskId={job.task?.id} /></>}
-    <p className="analysis-note">请选择两张尺寸相同的图片。质量指标用于比较图像变化，不代表隐写安全性。</p>
+    <p className="analysis-note">请选择两张尺寸相同的图片。</p>
   </div>;
 }
 

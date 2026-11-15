@@ -31,9 +31,15 @@ from .multimodal import router as multimodal_router
 from .network_lab import router as network_lab_router
 from .network_sessions import NetworkSessions
 from .secret_video import Rooms, router as secret_video_router
+from .restoration import router as restoration_router, rdh_router
+from .copyright import CopyrightService, router as copyright_router
 
 
 def request_body_limit(path: str) -> int:
+    if path == '/api/copyright/verify':
+        return 65 * 1024 * 1024
+    if path in {'/api/restoration/restore', '/api/rdh/extract'}:
+        return 97 * 1024 * 1024
     return (RESULT_BYTES if path == '/api/multimodal/uploads' else MAX_UPLOAD) + 1024 * 1024
 
 
@@ -46,7 +52,7 @@ class BodyLimitMiddleware:
     async def __call__(self, scope, receive, send):
         if scope["type"] != "http" or scope.get("method") not in {"POST", "PUT", "PATCH"}:
             return await self.app(scope, receive, send)
-        maximum = request_body_limit(scope.get('path', '')) if scope.get('path', '') == '/api/multimodal/uploads' else self.maximum
+        maximum = request_body_limit(scope.get('path', '')) if scope.get('path', '') in {'/api/multimodal/uploads', '/api/restoration/restore', '/api/rdh/extract', '/api/copyright/verify'} else self.maximum
         # Large multipart requests spill to disk; never assemble a 512 MiB body in RAM.
         with tempfile.SpooledTemporaryFile(max_size=1024 * 1024) as body:
             size = 0
@@ -90,6 +96,12 @@ def create_app(data_dir: str | Path | None = None, *, cleanup_interval: float = 
         application.state.service = StudioService(store)
         application.state.network_sessions = NetworkSessions(store)
         application.state.secret_video = Rooms()
+        copyright_path = Path(os.environ.get('ISTG_COPYRIGHT_DIR') or (parent / 'copyright' if data_dir is not None else Path(__file__).resolve().parents[1] / '.copyright-data'))
+        try:
+            application.state.copyright = CopyrightService(copyright_path)
+        except Exception:
+            application.state.tasks.close()
+            raise
         async def cleanup_periodically():
             while True:
                 await asyncio.sleep(cleanup_interval)
@@ -108,6 +120,7 @@ def create_app(data_dir: str | Path | None = None, *, cleanup_interval: float = 
                 await sweeper
             except asyncio.CancelledError:
                 pass
+            application.state.copyright.close()
             application.state.network_sessions.close()
             await application.state.secret_video.close()
             application.state.tasks.close()
@@ -301,6 +314,9 @@ def create_app(data_dir: str | Path | None = None, *, cleanup_interval: float = 
     app.include_router(multimodal_router)
     app.include_router(network_lab_router)
     app.include_router(secret_video_router)
+    app.include_router(restoration_router)
+    app.include_router(rdh_router)
+    app.include_router(copyright_router)
 
     # API/docs 路由优先，构建后的前端可由同一个仅监听本机的进程提供。
     frontend = Path(__file__).resolve().parents[1] / "frontend" / "dist"

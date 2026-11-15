@@ -78,11 +78,11 @@ export default function Applications() {
       <div className="applications-hero__image" aria-hidden="true"><ScenePhoto src={`${imageRoot}/robust-transmission.webp`} alt="" eager /></div>
       <div className="applications-hero__content">
         <h1 id="applications-heading">多模态<br /><span>信息隐藏</span></h1>
-        <div className="applications-hero__actions"><Link className="scene-button scene-button--primary" to="/embed">开始实验<ArrowRightOutlined aria-hidden="true" /></Link><a className="scene-button" href="#medical-imaging">探索应用<ArrowDownOutlined aria-hidden="true" /></a></div>
+        <div className="applications-hero__actions"><Link className="scene-button scene-button--primary" to="/embed">开始隐写<ArrowRightOutlined aria-hidden="true" /></Link><a className="scene-button" href="#medical-imaging">探索应用<ArrowDownOutlined aria-hidden="true" /></a></div>
       </div>
       <nav className="applications-chapters" aria-label="应用场景章节">
-        <a href="#medical-imaging"><span>01</span>医疗影像<ArrowRightOutlined aria-hidden="true" /></a>
-        <a href="#robust-transmission"><span>02</span>鲁棒性传输<ArrowRightOutlined aria-hidden="true" /></a>
+        <a href="#medical-imaging"><span>01</span>影像信息嵌入<ArrowRightOutlined aria-hidden="true" /></a>
+        <a href="#robust-transmission"><span>02</span>可逆隐写<ArrowRightOutlined aria-hidden="true" /></a>
         <a href="#copyright-protection"><span>03</span>数字版权<ArrowRightOutlined aria-hidden="true" /></a>
       </nav>
     </section>
@@ -91,36 +91,36 @@ export default function Applications() {
       <div className="medical-scene__shade" aria-hidden="true" />
       <div className="app-scene__index" aria-hidden="true">01</div>
       <div className="medical-scene__content" data-reveal>
-        <h2 id="medical-heading">医疗影像<br />隐私保护</h2>
-        <p className="app-scene__description">探索将敏感信息加密嵌入影像，并验证图像质量与信息恢复效果。</p>
+        <h2 id="medical-heading">影像信息<br />嵌入</h2>
+        <p className="app-scene__description">将文字、编号和说明嵌入图像，按需提取并核验。</p>
         <Link className="scene-button scene-button--light" to="/applications/medical">进入场景<ArrowRightOutlined aria-hidden="true" /></Link>
       </div>
     </section>
     <section id="robust-transmission" className="app-scene app-scene--transmission" data-scene="transmission" data-testid="applications-scene" aria-labelledby="transmission-heading">
       <div className="app-scene__index" aria-hidden="true">02</div>
-      <div className="transmission-scene__heading" data-reveal><h2 id="transmission-heading">鲁棒性传输</h2><Link className="scene-button" to="/applications/robustness">进入场景<ArrowRightOutlined aria-hidden="true" /></Link></div>
+      <div className="transmission-scene__heading" data-reveal><h2 id="transmission-heading">可逆图像隐写</h2><Link className="scene-button" to="/applications/robustness">进入场景<ArrowRightOutlined aria-hidden="true" /></Link></div>
       <figure className="transmission-scene__comparison" data-reveal>
         <div className="transmission-scene__original"><ScenePhoto src={`${imageRoot}/robust-transmission.webp`} alt="山峰与湖面倒影的原始风景照片" /></div>
-        <div className="transmission-scene__processed"><ScenePhoto src={`${imageRoot}/robust-transmission-compressed.webp`} alt="同一风景图像压缩后的视觉示意" /></div>
+        <div className="transmission-scene__processed"><ScenePhoto src={`${imageRoot}/robust-transmission.webp`} alt="可逆隐写图像的视觉示意" /></div>
         <div className="transmission-scene__divider" aria-hidden="true"><span /></div>
-        <figcaption><span>原始图像</span><span>压缩后 · 视觉示意</span></figcaption>
+        <figcaption><span>原始图像</span><span>RDH 隐写图 · 视觉示意</span></figcaption>
       </figure>
-      <p className="transmission-scene__description" data-reveal>观察图像经过处理后，隐藏信息是否仍能恢复。</p>
+      <p className="transmission-scene__description" data-reveal>将秘密信息可逆地嵌入像素，提取秘密信息的同时精确恢复原始 RGB 图像。</p>
     </section>
     <section id="copyright-protection" className="app-scene app-scene--copyright" data-scene="copyright" data-testid="applications-scene" aria-labelledby="copyright-heading">
       <div className="app-scene__index" aria-hidden="true">03</div>
       <div className="copyright-scene__layout">
         <figure className="copyright-scene__artwork" data-reveal><div className="copyright-scene__frame"><ScenePhoto src={`${imageRoot}/copyright-protection.webp`} alt="Alfred East 的风景油画，呈现芦苇湖面与阳光下的山丘" height={1388} /></div></figure>
         <div className="copyright-scene__content" data-reveal>
-          <h2 id="copyright-heading">数字版权<br />与水印验证</h2>
-          <p className="app-scene__description">将作品信息嵌入图像，并验证标识能否完整提取。</p>
+          <h2 id="copyright-heading">数字版权<br />保护</h2>
+          <p className="app-scene__description">管理作品、签发版权标识，核验来源并设置访问授权。</p>
           <Link className="scene-button scene-button--light" to="/applications/copyright">进入场景<ArrowRightOutlined aria-hidden="true" /></Link>
         </div>
       </div>
     </section>
     <section className="applications-outro" aria-labelledby="applications-outro-heading">
-      <div><h2 id="applications-outro-heading">探索你的图像隐写场景</h2><p>从一个具体任务开始，选择适合的实验方式。</p></div>
-      <div className="applications-outro__actions"><a className="scene-button scene-button--light" href="#medical-imaging">选择应用场景<ArrowRightOutlined aria-hidden="true" /></a><Link className="scene-button scene-button--primary" to="/embed">开始实验<ArrowRightOutlined aria-hidden="true" /></Link></div>
+      <div><h2 id="applications-outro-heading">探索你的图像隐写场景</h2><p>从一个具体任务开始，选择适合的信息隐藏方式。</p></div>
+      <div className="applications-outro__actions"><a className="scene-button scene-button--light" href="#medical-imaging">选择应用场景<ArrowRightOutlined aria-hidden="true" /></a><Link className="scene-button scene-button--primary" to="/embed">开始隐写<ArrowRightOutlined aria-hidden="true" /></Link></div>
     </section>
   </div>;
 }

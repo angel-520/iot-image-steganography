@@ -1,0 +1,51 @@
+{
+  "checks": [
+    "rdh-embedded-1440",
+    "rdh-embedded-390",
+    "rdh-restored-new-session-390",
+    "Fresh browser session extracts UTF-8 and restores RGB after embedding task deletion",
+    "rdh-encrypted-file-restored-1440",
+    "Encrypted binary payload, wrong-password failure without outputs, and byte-exact recovery",
+    "Insufficient capacity disables embedding without truncating data"
+  ],
+  "sample": {
+    "algorithm": "checkerboard_pehs_rgb_v1",
+    "width": 640,
+    "height": 480,
+    "theoretical_capacity_bits": 457446,
+    "safe_capacity_bits": 457446,
+    "packet_capacity_bytes": 57180,
+    "effective_capacity_bits": 457440,
+    "secret_capacity_bytes": 57077,
+    "packet_bytes": 150,
+    "secret_bytes": 47,
+    "packet_overhead_bytes": 103,
+    "embedded_bits": 1200,
+    "fits": true,
+    "usage_percent": 0.2623294858342078,
+    "auxiliary_bytes": 417,
+    "location_map_bytes": 0,
+    "auxiliary_in_pixel_bits": 0,
+    "bpp": 0.00390625,
+    "capacity_bpp": 1.4890625,
+    "stego_bytes": 7932,
+    "original_file_bytes": 34173,
+    "embedding_seconds": 0.0203113000607118,
+    "verification_seconds": 0.011725199990905821,
+    "packet_verified": true,
+    "rgb_verified": true,
+    "original_rgb_sha256": "660f41b4e0c512ea2b30d1509fa6f9d69492afdb3124ba9c8b52bb20c3046b05",
+    "restored_rgb_sha256": "660f41b4e0c512ea2b30d1509fa6f9d69492afdb3124ba9c8b52bb20c3046b05",
+    "packet_sha256": "d0043771aacf5a722692353a26a327c455e5918564ac9c201b4c6cdb22081d31",
+    "quality": {
+      "mse": 0.0005881076388888889,
+      "psnr": 80.4362354040866,
+      "ssim": 0.9999954722217799
+    },
+    "total_seconds": 0.09494300000369549,
+    "secret_verified": true,
+    "secret_sha256": "72db28e835b17985975f357e47a9b313c5734e678314658a1bd3c58f8345e54e",
+    "encryption": "none"
+  },
+  "pageErrors": []
+}

@@ -19,5 +19,5 @@ export function ResultCharts({option,height=300}: {option: EChartsOption; height
     const observer = new ResizeObserver(() => chart.resize()); observer.observe(reference.current);
     return () => { observer.disconnect(); chart.dispose(); };
   }, [option]);
-  return <div ref={reference} style={{height,width:'100%'}} role="img" aria-label="实验结果图表"/>;
+  return <div ref={reference} style={{height,width:'100%'}} role="img" aria-label="处理结果图表"/>;
 }

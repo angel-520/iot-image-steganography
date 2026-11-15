@@ -13,12 +13,14 @@ const Multimodal = lazy(() => import('./pages/Multimodal'));
 const NetworkLab = lazy(() => import('./pages/NetworkLab'));
 const SecretVideo = lazy(() => import('./pages/SecretVideo'));
 const ApplicationStudio = lazy(() => import('./pages/ApplicationStudio'));
+const ImageRestoration = lazy(() => import('./pages/ImageRestoration'));
+const Copyright = lazy(() => import('./pages/Copyright'));
 
 const navigation = [
-  { label: '隐写实验', items: [{ path: '/embed', label: '信息隐藏' }, { path: '/extract', label: '信息提取' }, { path: '/multimodal', label: '多模态实验' }] },
+  { label: '信息隐写', items: [{ path: '/embed', label: '信息隐藏' }, { path: '/extract', label: '信息提取' }, { path: '/multimodal', label: '多模态隐写' }] },
   { label: '分析评估', items: [{ path: '/analysis', label: '安全分析' }, { path: '/compare', label: '算法对比' }] },
-  { label: '通信实验', items: [{ path: '/network-lab', label: '网络隐写' }, { path: '/secret-video', label: '视频通话' }] },
-  { label: '应用场景', items: [{ path: '/applications/medical', label: '医疗影像隐私保护' }, { path: '/applications/robustness', label: '鲁棒性传输测试' }, { path: '/applications/copyright', label: '数字版权与水印验证' }] },
+  { label: '通信应用', items: [{ path: '/network-lab', label: '网络隐写' }, { path: '/secret-video', label: '视频通话' }] },
+  { label: '应用场景', items: [{ path: '/applications/medical', label: '影像信息嵌入' }, { path: '/applications/robustness', label: '可逆图像隐写' }, { path: '/applications/copyright', label: '数字版权保护' }] },
 ];
 
 function LegacyApplications() {
@@ -63,7 +65,7 @@ function StudioLayout() {
       </nav>
       <div className="site-header-actions">
         {!home && <div className="header-status" role="status"><span className={`connection-dot ${health}`}/><span>{health === 'ok' ? '已连接' : health === 'offline' ? '连接中断' : '正在连接'}</span></div>}
-        <Link to="/embed" className="header-start">开始实验</Link>
+        <Link to="/embed" className="header-start">开始隐写</Link>
         <Button type="text" className="mobile-menu-button" aria-label="打开导航" aria-expanded={drawerOpen} icon={<MenuOutlined/>} onClick={() => setDrawerOpen(true)}/>
       </div>
     </div></header>
@@ -74,7 +76,7 @@ function StudioLayout() {
     </Drawer>
     <div className="studio-main"><main id="main-content" className={`page-content${home ? ' page-content--immersive' : ''}`} tabIndex={-1}><div className={`route-view${home ? ' route-view--immersive' : ''}`} key={location.pathname}>
       <Suspense fallback={<Skeleton active paragraph={{rows:10}}/>}><Routes>
-        <Route path="/" element={<Applications/>}/><Route path="/embed" element={<Embed/>}/><Route path="/extract" element={<Extract/>}/><Route path="/multimodal" element={<Multimodal/>}/><Route path="/network-lab" element={<NetworkLab/>}/><Route path="/secret-video" element={<SecretVideo/>}/><Route path="/analysis" element={<Analysis/>}/><Route path="/compare" element={<Compare/>}/><Route path="/applications/medical" element={<ApplicationStudio scene="medical"/>}/><Route path="/applications/robustness" element={<ApplicationStudio scene="robustness"/>}/><Route path="/applications/copyright" element={<ApplicationStudio scene="copyright"/>}/><Route path="/applications" element={<LegacyApplications/>}/><Route path="*" element={<Navigate to="/" replace/>}/>
+        <Route path="/" element={<Applications/>}/><Route path="/embed" element={<Embed/>}/><Route path="/extract" element={<Extract/>}/><Route path="/multimodal" element={<Multimodal/>}/><Route path="/network-lab" element={<NetworkLab/>}/><Route path="/secret-video" element={<SecretVideo/>}/><Route path="/analysis" element={<Analysis/>}/><Route path="/compare" element={<Compare/>}/><Route path="/applications/medical" element={<ApplicationStudio/>}/><Route path="/applications/robustness" element={<ImageRestoration/>}/><Route path="/applications/copyright" element={<Copyright/>}/><Route path="/applications" element={<LegacyApplications/>}/><Route path="*" element={<Navigate to="/" replace/>}/>
       </Routes></Suspense>
     </div></main><footer className="app-footer">ISTG Studio</footer></div>
   </div>;

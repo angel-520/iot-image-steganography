@@ -26,7 +26,7 @@ const steps = [
   { title: '选择算法', heading: '算法设置' },
   { title: '设置加密', heading: '加密设置' },
   { title: '确认生成', heading: '确认设置' },
-  { title: '查看结果', heading: '实验结果' },
+  { title: '查看结果', heading: '处理结果' },
 ];
 
 export default function Embed() {
@@ -222,7 +222,7 @@ export default function Embed() {
         <div className="result-actions"><Button onClick={() => navigate('/extract', { state: { experimentId: completed.id } })}>提取验证</Button><Button onClick={() => navigate('/analysis?tab=performance&panel=quality', { state: { experimentId: completed.id } })}>安全分析</Button>{completed.taskId && <Button href={exportUrl(completed.taskId)} icon={<DownloadOutlined />}>导出报告</Button>}</div>
         <ImageComparison original={fileUrl(completed.cover)} stego={fileUrl(completed.stego)} />
         <MetricCards metrics={completed.quality} />
-        <details className="result-details-disclosure"><summary>实验详情</summary><Descriptions column={{ xs: 1, sm: 2, lg: 3 }} size="small" items={[
+        <details className="result-details-disclosure"><summary>处理详情</summary><Descriptions column={{ xs: 1, sm: 2, lg: 3 }} size="small" items={[
           { key: 'algorithm', label: '算法', children: resultAlgorithm },
           { key: 'size', label: '写入包大小', children: formatBytes(completed.packet_bytes) },
           { key: 'time', label: '嵌入耗时', children: `${(completed.timings.embed_seconds * 1000).toFixed(1)} ms` },

@@ -112,7 +112,7 @@ class NetworkAlgorithms(unittest.TestCase):
     def test_ethernet_padding_is_not_ip_payload(self):
         buffer = BytesIO()
         writer = PcapWriter(buffer, linktype=1, sync=True)
-        packet = Ether()/IP(src='192.0.2.1', dst='192.0.2.2')/UDP(sport=50,dport=51)/Raw(b'123')
+        packet = Ether(src='02:00:00:00:00:01', dst='02:00:00:00:00:02')/IP(src='192.0.2.1', dst='192.0.2.2')/UDP(sport=50,dport=51)/Raw(b'123')
         packet = Ether(bytes(packet)) / Padding(b'\x00' * 10)
         writer.write(packet)
         data = buffer.getvalue()

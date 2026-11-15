@@ -58,7 +58,7 @@ export function RobustnessPanel({ algorithms, guided = false }: { algorithms: Al
   const imageInput = <><ImageUploader hideLabel={guided} label="待测试的隐写图片" value={image} onChange={value => {
     change(() => setImage(value)); handoff.detach(); handoff.dismiss();
   }} onLoadingChange={setUploading} role="stego" disabled={job.loading} />
-    <p className="scene-note">请使用嵌入时的算法和参数。这里比较处理前后的数据恢复情况，不需要解密密码。</p></>;
+    <p className="scene-note">请使用嵌入时的算法和参数。</p></>;
   const method = <div className="scene-settings">
     <AlgorithmSelector algorithms={algorithms} value={algorithm} disabled={job.loading} onChange={value => change(() => {
       setAlgorithm(value); setParams(defaultParams(algorithms.find(item => item.id === value)));
@@ -83,10 +83,10 @@ export function RobustnessPanel({ algorithms, guided = false }: { algorithms: Al
       <Card title="02 选择传输处理">{controls}</Card>
     </div> : <><div className="analysis-two">{imageInput}{method}</div>{controls}</>}
     <JobStatus task={job.task} loading={job.loading} error={job.error} />
-    <div className="scene-actions"><span className="scene-note">{!image ? '上传已嵌入信息的图片后开始' : !attacks.length ? '请至少选择一种处理方式' : ''}</span><Button data-testid="scene-robustness-submit" type="primary" disabled={!image || !attacks.length || !selected?.available || keyMissing || uploading} loading={job.loading} icon={<ExperimentOutlined />} onClick={run}>{guided ? '开始传输测试' : '开始鲁棒性实验'}</Button></div>
+    <div className="scene-actions"><span className="scene-note">{!image ? '上传已嵌入信息的图片后开始' : !attacks.length ? '请至少选择一种处理方式' : ''}</span><Button data-testid="scene-robustness-submit" type="primary" disabled={!image || !attacks.length || !selected?.available || keyMissing || uploading} loading={job.loading} icon={<ExperimentOutlined />} onClick={run}>{guided ? '开始传输测试' : '开始鲁棒性测试'}</Button></div>
     {job.result && <Card title={guided ? '03 查看恢复结果' : '处理结果'} extra={<Exports taskId={job.task?.id} />}>
       {guided && <div className="scene-test-summary"><strong>{rows.filter(row => row.exact_match).length} / {rows.length}</strong><span>种处理后完整恢复</span></div>}
-      {guided && <p className="scene-note">结果仅代表本次图像、算法和处理强度，不代表所有传输环境。</p>}
+
       {!guided && <ResultCharts option={option} height={270} />}
       <Table<RobustnessRow> data-testid="scene-robustness-results" rowKey={(_, index) => String(index)} columns={columns} dataSource={rows} pagination={false} scroll={{ x: 880 }} />
       {rows.some(row => !row.extraction_success) && <Alert className="scene-result-note" type="info" message="未恢复时可降低处理强度，或更换算法、图片后重新测试。" />}

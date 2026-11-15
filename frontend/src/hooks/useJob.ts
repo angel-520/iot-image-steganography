@@ -30,7 +30,7 @@ export function useJob() {
         if (current.status === 'failed' || current.status === 'cancelled') {
           throw Object.assign(new Error(typeof current.error === 'string' ? current.error : current.error?.message ?? '任务未完成，请检查图片和参数。'), { code: typeof current.error === 'object' ? current.error?.code : undefined });
         }
-        if (Date.now() > deadline) throw new Error(`任务等待超过 ${minutes} 分钟，可稍后重新检查或减少实验规模。`);
+        if (Date.now() > deadline) throw new Error(`任务等待超过 ${minutes} 分钟，可稍后重新检查或减少处理数量。`);
         await new Promise(resolve => window.setTimeout(resolve, 500));
         if (own !== generation.current) return;
         current = await getTask(current.id, abort.signal);

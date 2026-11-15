@@ -1,0 +1,4 @@
+-r requirements.txt
+# Starlette versions use either the original HTTPX or its newer HTTPX2 client.
+httpx>=0.28,<1
+httpx2>=2.16,<3

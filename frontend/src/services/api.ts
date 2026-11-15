@@ -29,8 +29,13 @@ export function exportUrl(id: string, format: 'json' | 'csv' = 'json'): string {
 export function errorMessage(error: unknown): string {
   if (axios.isAxiosError(error)) {
     const status = error.response?.status;
+    const response = error.response?.data as {error?: {code?: string; message?: string}; detail?: string} | undefined;
+    const missingEndpoint = (status === 404 && response?.error?.code === 'not_found') || status === 405;
+    if (missingEndpoint && /^\/(?:api\/)?(?:copyright|restoration|rdh)(?:\/|$)/.test(error.config?.url ?? '')) {
+      return '该功能服务需要更新，请重启服务后重试。';
+    }
     if ((status === 404 || status === 405) && error.config?.url?.startsWith('/network-lab/')) {
-      return '网络实验暂时不可用，请重启服务后重试。';
+      return '网络通信暂时不可用，请重启服务后重试。';
     }
     if ((status === 404 || status === 405) && error.config?.url?.startsWith('/multimodal/')) {
       return '多模态功能暂时不可用，请重启服务后重试。';
@@ -38,7 +43,6 @@ export function errorMessage(error: unknown): string {
     if (status === 405) {
       return '操作暂时不可用，请刷新页面后重试。';
     }
-    const response = error.response?.data as {error?: {message?: string}; detail?: string} | undefined;
     return response?.error?.message ?? (typeof response?.detail === 'string' ? response.detail : undefined)
       ?? (error.code === 'ERR_NETWORK' ? '连接中断，请稍后重试。' : '请求未能完成，请检查输入后重试。');
   }

@@ -59,7 +59,7 @@ export default function Extract(){
   };
   const failure=status?stateDescriptions[status]:undefined;
   const canRun=image&&(mode==='auto'?selectedAlgorithms.length>0:selected?.available&&!selected.parameters.some(p=>p.name==='key'&&p.required&&!params.key));
-  return <div><div className="page-heading"><div><h1>信息提取</h1></div>{handoff.experiment && image?.id === handoff.experiment.stego.id && <Button onClick={() => navigate(experimentPath(handoff.experiment!), { state: { experimentId: handoff.experiment!.id } })}>返回实验结果</Button>}</div>
+  return <div><div className="page-heading"><div><h1>信息提取</h1></div>{handoff.experiment && image?.id === handoff.experiment.stego.id && <Button onClick={() => navigate(experimentPath(handoff.experiment!), { state: { experimentId: handoff.experiment!.id } })}>返回处理结果</Button>}</div>
     <HandoffNotice visible={handoff.expired} onClose={handoff.dismiss} />
     {handoff.experiment && image?.id === handoff.experiment.stego.id && (handoff.experiment.encrypted || handoff.experiment.algorithm === 'scatter_lsb') && <p className="handoff-guidance">{handoff.experiment.algorithm === 'scatter_lsb' ? '请重新填写散布位置密钥。' : ''}{handoff.experiment.encrypted ? '此图片已加密，请填写解密密码。' : ''}</p>}
     {algorithmsError&&<Alert type="error" message={algorithmsError} showIcon/>}

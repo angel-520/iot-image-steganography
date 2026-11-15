@@ -1,4 +1,4 @@
-# Runtime dependencies; Python 3.11+
+ # Runtime dependencies; Python 3.11+
 numpy>=1.24,<3
 Pillow>=10,<13
 scipy>=1.11,<2

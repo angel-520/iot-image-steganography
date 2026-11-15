@@ -26,3 +26,6 @@ frontend/node_modules/
 .qa/stego.wav
 .qa/secret-video-source-*.wav
 .qa/secret-video-speech.wav
+
+# Private copyright records and encryption/signing keys.
+.copyright-data/
